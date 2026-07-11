@@ -45,3 +45,4 @@
 - docs: MEMORY.md에 줌 기능 재구현 방식과 이전 실패 원인 기록
 - refactor: 인간지표탭에서 "국내주식 인간지표"를 VIX보다 위로 재배치
 - feat: 인간지표탭에 MOVE Index(ICE BofA, 채권시장판 VIX) 추가 (Yahoo Finance `^MOVE`, 일봉)
+- feat: 시장/물가/고용탭의 가로 스크롤 카드에 모바일 대응 미디어 쿼리 추가 (768px 미만에서는 세로로 자연스럽게 쌓임)
