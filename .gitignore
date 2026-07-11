@@ -1,0 +1,15 @@
+# 민감정보 (절대 커밋 금지)
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# 대용량 재생성 가능 캐시 (스크래핑으로 다시 만들 수 있음)
+sentiment_raw_posts.json
+
+# OS/에디터
+.DS_Store
+
+# Claude Code 로컬 설정 (이 프로젝트 실행과 무관)
+.claude/
