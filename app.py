@@ -510,21 +510,6 @@ with tab_valuation:
 
 # ── 인간지표 (시장 심리) ──────────────────────────────────────
 with tab_sentiment:
-    st.subheader("VIX (공포지수)")
-    st.caption(
-        "S&P500 옵션 내재변동성으로 산출하는 CBOE 변동성지수. 20 이하는 안정, 30 이상은 공포 국면으로 흔히 해석됩니다. "
-        "가장 널리 쓰이는 정량적 시장심리 지표입니다."
-    )
-    vix = get_series("VIXCLS", str(start_date), api_key)
-    latest_vix = vix.dropna(subset=["value"]).iloc[-1]
-    st.metric(f"최근 VIX ({latest_vix['date'].strftime('%Y-%m-%d')})", f"{latest_vix['value']:.2f}")
-    st.altair_chart(
-        zoom_chart(vix, x="date", y="value", y_title="VIX", rule_y=20, rule_label="안정/공포 기준선(20)"),
-        width="stretch",
-    )
-
-    st.divider()
-
     st.subheader("국내주식 인간지표")
     st.caption(
         "디시인사이드 국내주식 갤러리의 전날 게시글을 시간대 4구간으로 나눠, "
@@ -574,6 +559,21 @@ with tab_sentiment:
                         st.image(png, width="stretch")
                     else:
                         st.caption("매칭된 키워드가 없습니다.")
+
+    st.divider()
+
+    st.subheader("VIX (공포지수)")
+    st.caption(
+        "S&P500 옵션 내재변동성으로 산출하는 CBOE 변동성지수. 20 이하는 안정, 30 이상은 공포 국면으로 흔히 해석됩니다. "
+        "가장 널리 쓰이는 정량적 시장심리 지표입니다."
+    )
+    vix = get_series("VIXCLS", str(start_date), api_key)
+    latest_vix = vix.dropna(subset=["value"]).iloc[-1]
+    st.metric(f"최근 VIX ({latest_vix['date'].strftime('%Y-%m-%d')})", f"{latest_vix['value']:.2f}")
+    st.altair_chart(
+        zoom_chart(vix, x="date", y="value", y_title="VIX", rule_y=20, rule_label="안정/공포 기준선(20)"),
+        width="stretch",
+    )
 
 # ── 뉴스 ────────────────────────────────────────────────────
 with tab_news:
