@@ -33,3 +33,6 @@
 - docs: README.md에 Streamlit Community Cloud 배포 절차 추가
 - deploy: GitHub 저장소(jeonwoobin-hue/macro-dashboard) 연결 및 Streamlit Community Cloud 최초 배포
 - fix: 워드클라우드가 Windows 전용 폰트 경로(`C:\Windows\Fonts\malgun.ttf`)를 하드코딩해서 Streamlit Cloud(Linux)에서 `OSError`로 앱이 죽던 문제 수정. 오픈소스 나눔고딕 폰트를 `fonts/`에 번들링하고 상대경로로 참조하도록 변경
+- fix(security): 사이드바 FRED/ECOS API Key 입력창이 `type=password`임에도 실제 값이 브라우저로 그대로 전송되어 개발자도구로 열람 가능했던 문제 수정. Secrets에 키가 설정된 경우 입력창 대신 연결 상태만 표시하도록 변경
+- fix(security): FRED/ECOS API 요청 실패 시 예외 메시지에 키가 포함된 URL이 그대로 노출되던 문제 수정 (`fred_client.py`, `ecos_client.py`)
+- docs: MEMORY.md에 "보안 관련 결정" 섹션 신설, API 키 유출 경로와 수정 내역 기록

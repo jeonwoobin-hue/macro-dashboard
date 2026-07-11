@@ -39,6 +39,12 @@
 - 3~4개 차트를 한 행에 배치할 때는 `st.container(key="scrollrow_xxx")` + CSS(`flex-wrap: nowrap; overflow-x: auto`)로 가로 스크롤 처리.
 - ~~한글 폰트가 필요한 곳(워드클라우드)은 시스템에 기본 설치된 `C:\Windows\Fonts\malgun.ttf` 사용~~ → **버그였음**: Streamlit Community Cloud(Linux)에는 이 경로가 없어서 `OSError: cannot open resource`로 앱 전체가 죽었음(배포 후 실제로 발생). 2026-07-11 수정: 오픈소스 나눔고딕(OFL 라이선스, google/fonts 저장소)을 `fonts/NanumGothic-Regular.ttf`로 리포에 직접 번들링하고, `os.path.join(os.path.dirname(__file__), "fonts", ...)` 상대경로로 참조하도록 변경. **교훈: 로컬 전용 절대경로(OS별 시스템 폰트, 특정 드라이브 경로 등)는 클라우드 배포 시 반드시 깨진다 — 리소스 파일은 항상 프로젝트 안에 번들링하고 상대경로로 참조할 것.**
 
+## 보안 관련 결정
+
+- **API 키를 브라우저로 보내지 않기**: `st.text_input(..., type="password", value=secret_key)`처럼 시크릿 값을 기본값으로 넣으면, 화면에는 점(····)으로 가려지지만 **실제 값은 그대로 프론트엔드로 전송됨**(개발자도구로 열람 가능). Streamlit Cloud에 배포해 앱을 공유한 뒤 실제로 지적받은 문제. 수정: `get_secret()`으로 키를 이미 구했으면 `text_input` 자체를 렌더링하지 않고 "✅ 연결됨" 문구만 표시 — 키 값이 아예 클라이언트로 전송되지 않도록 함(로컬에서 `.env`로 실행할 때도 동일하게 적용되어, 로컬 사이드바에서도 더 이상 키를 직접 볼 수 없음 — 필요하면 `.env` 파일을 직접 확인).
+- **예외 메시지를 통한 키 유출도 함께 차단**: `fred_client.py`/`ecos_client.py`는 API 키를 URL(쿼리스트링 또는 경로)에 그대로 넣어 요청함. `requests`의 `HTTPError` 기본 메시지는 요청 URL 전체를 포함하므로, 처리되지 않은 예외가 Streamlit 화면에 그대로 노출되면 그 안에 키가 포함될 수 있었음. 두 클라이언트 모두 `raise_for_status()`를 try/except로 감싸서 URL이 빠진 메시지로 다시 raise하도록 수정.
+- **일반 원칙**: 이 프로젝트처럼 "Secrets에 키를 넣고 방문자와 URL만 공유"하는 배포 형태에서는, 서버가 아는 값이 클라이언트로 왕복하는 모든 경로(위젯 기본값, 에러 메시지, 로그 출력 등)를 잠재적 유출 지점으로 의심할 것.
+
 ## 미해결/다음에 고려할 것
 
 - `zoom_chart` 함수명이 기능과 안 맞음(브러시 제거 후에도 이름 유지 중). 다음에 대규모로 손댈 일이 생기면 이름 정리 고려.
