@@ -28,3 +28,6 @@
 - docs: README.md, MEMORY.md, CHANGELOG.md 신설. 장기 프로젝트 운영 규칙 수립 (모듈 단위 기능 추가, 임의 리팩터링 금지, 작업 후 문서 동기화)
 - feat: 뉴스 탭 신설 — 어제자 경제 뉴스 Top 10, 클릭 시 원문 링크로 이동 (`news_client.py` 신설, 네이버 뉴스 랭킹 + 경제 키워드 필터링 기반)
 - docs: README.md/MEMORY.md에 뉴스 탭 관련 내용 반영 (네이버 카테고리 랭킹 API 부재, sid1 파라미터 무효 확인, "경기"/"경기도" 키워드 오탐 수정 등 조사 과정 기록)
+- chore: Streamlit Community Cloud 배포를 위해 git 저장소 초기화 (`.gitignore`로 `.env`/`__pycache__`/`sentiment_raw_posts.json`/`.claude` 제외)
+- feat: API 키 로딩에 `st.secrets` 지원 추가 (`get_secret()` 헬퍼) — 로컬 `.env`와 Streamlit Cloud Secrets 둘 다 지원, 기존 동작은 그대로 유지
+- docs: README.md에 Streamlit Community Cloud 배포 절차 추가

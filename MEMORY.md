@@ -43,4 +43,5 @@
 
 - `zoom_chart` 함수명이 기능과 안 맞음(브러시 제거 후에도 이름 유지 중). 다음에 대규모로 손댈 일이 생기면 이름 정리 고려.
 - 인간지표 감성사전은 슬랭 커버리지가 낮음. 실제 오탐/누락 사례를 모아 사전 확장 필요.
-- git 저장소 미초기화 상태. `.env`에 실제 API 키가 있으므로, 나중에 git을 도입하면 `.gitignore`에 `.env`, `__pycache__/`, `sentiment_raw_posts.json`(대용량 재생성 가능 캐시)을 반드시 추가할 것.
+- ~~git 저장소 미초기화 상태~~ → 2026-07-11, Streamlit Community Cloud 배포를 위해 `git init` 완료. `.gitignore`에 `.env`, `__pycache__/`, `sentiment_raw_posts.json`, `.claude/` 반영함. 저장소 사용자 정보는 repo-local로만 설정(`git config user.name/email`, `--global` 아님).
+- **API 키 로딩 이중화**: `app.py`의 `get_secret()` 헬퍼가 `st.secrets`(Streamlit Cloud 배포 시) → `os.getenv`(.env, 로컬 실행 시) 순으로 확인. Streamlit Cloud에 배포하면 앱 소유자가 Secrets에 키를 등록해두면 방문자(친구 등)가 별도로 API 키를 입력하지 않아도 자동으로 채워짐.
