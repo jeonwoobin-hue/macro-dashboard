@@ -46,3 +46,4 @@
 - refactor: 인간지표탭에서 "국내주식 인간지표"를 VIX보다 위로 재배치
 - feat: 인간지표탭에 MOVE Index(ICE BofA, 채권시장판 VIX) 추가 (Yahoo Finance `^MOVE`, 일봉)
 - feat: 시장/물가/고용탭의 가로 스크롤 카드에 모바일 대응 미디어 쿼리 추가 (768px 미만에서는 세로로 자연스럽게 쌓임)
+- fix: 배포 서버에서 간헐적으로 재발하는 `Segmentation fault`/장시간 로딩 완화 시도 — `MPLCONFIGDIR`을 임시 디렉터리로 명시 지정 (근본 원인 미확정, MEMORY.md에 다음 시도할 방안 기록)

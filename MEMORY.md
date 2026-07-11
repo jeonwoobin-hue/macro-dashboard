@@ -51,6 +51,10 @@
 - **`requirements.txt`에 버전을 안 박아두면 위험하다**: 처음 배포 시 `streamlit`, `pandas`, `wordcloud` 등을 버전 없이 적어뒀더니, Streamlit Cloud가 배포 시점에 최신 버전들을 새로 조합해 설치하면서 numpy와 wordcloud/pandas/matplotlib 계열 바이너리(C 확장) 간 ABI 비호환이 발생 → 앱 시작 직후 `Segmentation fault`로 즉시 죽음(Python 예외/트레이스백조차 없이 네이티브 크래시라 원인 파악이 어려웠음). 로그에서 `/app/scripts/run-streamlit.sh: line 9: <PID> Segmentation fault`처럼 파이썬 트레이스백 없이 바로 죽으면 십중팔구 이 패턴.
   - 해결: 로컬에서 실제로 정상 동작하는 정확한 버전 조합을 `pip freeze`로 뽑아서 `requirements.txt`에 전부 `==`로 고정(streamlit, pandas, numpy, pillow, matplotlib, pyarrow, altair, wordcloud, lxml, beautifulsoup4 등 전이 의존성까지 명시적으로). 로컬 Python 버전(3.14)과 배포 서버 Python 버전이 같아서 그대로 이식 가능했음.
   - **교훈: 배포용 `requirements.txt`는 항상 버전을 고정할 것.** 버전 미고정은 "지금은 되는데 나중에 재배포하면 깨질 수 있는" 잠재적 시한폭탄이다.
+- **버전 고정 후에도 `Segmentation fault`가 간헐적으로 재발함 (2026-07-11, 미해결 가능성 있음)**: `requirements.txt`를 안 건드린 채로도 재배포 시 몇 분간 로딩되다가 결국 `Segmentation fault`로 죽는 현상이 반복됨. 두 가지를 의심하고 있음:
+  1. 앱이 매 세션마다 FRED·ECOS·Yahoo Finance·네이버뉴스·디시인사이드 등 외부 API를 ~20회 순차 호출(각 `timeout=15`)하는데, 배포 서버 IP가 일부 사이트에서 느리게 응답/차단당해 타임아웃이 누적되며 "3분 넘게 로딩"으로 보였을 가능성.
+  2. `wordcloud`가 내부적으로 `matplotlib`을 불러오는데, 컨테이너가 매번 새로 뜨는 배포 환경에서는 기본 폰트캐시 경로 쓰기가 느리거나 문제를 일으킬 수 있음 → `MPLCONFIGDIR`을 `tempfile.gettempdir()` 기반 경로로 명시 지정해서 완화 시도(2026-07-11 커밋). **다만 로컬에서 콜드캐시로 재현했을 때 import는 0.35초에 불과해 이 가설이 얼마나 실제 원인인지는 확신 없음.**
+  - 세그폴트는 Python 예외로 안 잡히고 트레이스백도 안 남아서 원인 특정이 어려움. 이 문제가 계속되면 다음으로 시도할 것: (a) 탭별로 실제 클릭 전까지는 데이터를 안 불러오는 지연 로딩 구조로 변경(현재는 `st.tabs()` 특성상 매 실행마다 8개 탭 전부의 코드가 돌아감), (b) 외부 요청 타임아웃을 15초보다 훨씬 짧게 줄이고 실패를 조용히 무시하도록 방어적으로 수정, (c) Streamlit Cloud 유료 티어로 리소스 한도를 늘려보기.
 
 ## 미해결/다음에 고려할 것
 
