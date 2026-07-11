@@ -1,6 +1,15 @@
 import io
 import json
 import os
+import tempfile
+
+# wordcloud가 내부적으로 matplotlib를 불러오는데, 배포 컨테이너처럼 매번 새로
+# 시작하는 환경에서는 기본 캐시 경로에 쓰기가 안 되거나 느려서 폰트 캐시를
+# 통째로 다시 만들며 기동이 몇 분씩 걸리거나(심하면 크래시로) 이어질 수 있다.
+# wordcloud를 import하기 전에 빠르고 확실히 쓰기 가능한 캐시 경로를 지정해둔다.
+# (tempfile.gettempdir()을 쓰면 Windows 로컬/Linux 배포 환경 둘 다에서 안전하게 동작)
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "matplotlib"))
+
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
