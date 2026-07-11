@@ -20,6 +20,7 @@
 - **반도체 버블 지수**: Stooq는 봇 탐지(JS proof-of-work)로 막혀서 우회하지 않음(정책상 캡차/봇탐지 우회 금지). 대신 Yahoo Finance 비공식 공개 차트 API(`query1.finance.yahoo.com/v8/finance/chart/{symbol}`)를 사용 — 일반적인 데이터 엔드포인트 GET 요청이라 봇탐지 우회에 해당하지 않는다고 판단. `^SOX`(PHLX 반도체지수, 1994~) 하나로 닷컴버블 구간(1995~2002)과 현재 랠리(2019~)를 각각 시작월=100으로 지수화해 겹쳐 비교.
 - **한국/미국 지수(시장 탭)**: Yahoo Finance 티커 `^KS11`(KOSPI), `^KQ11`(KOSDAQ), `^IXIC`(Nasdaq), `^DJI`(Dow). 일봉(`interval=1d`) 사용.
 - **VIX**: FRED `VIXCLS`로 충분히 커버됨(정량적 공포지수, 20/30 기준선이 통념).
+- **MOVE Index(채권판 VIX)**: FRED에는 없음(ICE BofA 소유의 독점 지수). Yahoo Finance `^MOVE` 티커로 2002-11~현재 전체 히스토리 확보 가능. **주의**: 이 심볼은 `interval=1mo`(월봉) 요청 시 비정상적으로 딱 1개 행만 반환하는 버그성 동작이 있음(다른 심볼은 정상). 원인 불명이라 그냥 `interval=1d`(일봉)로 우회해서 사용 — 다른 종목에서 월봉이 이상하게 나오면 이 케이스를 의심할 것.
 
 ## 인간지표(디시인사이드) 크롤링 메모
 

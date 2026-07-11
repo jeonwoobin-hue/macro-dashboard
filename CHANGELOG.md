@@ -44,3 +44,4 @@
 - feat: 차트 확대(스크롤)·이동(드래그) 기능 재도입 — 이전엔 브러시+미니맵 방식의 버그로 되돌렸으나, `bind="scales"` 방식으로 재구현해 동일 버그 없이 동작 확인
 - docs: MEMORY.md에 줌 기능 재구현 방식과 이전 실패 원인 기록
 - refactor: 인간지표탭에서 "국내주식 인간지표"를 VIX보다 위로 재배치
+- feat: 인간지표탭에 MOVE Index(ICE BofA, 채권시장판 VIX) 추가 (Yahoo Finance `^MOVE`, 일봉)
