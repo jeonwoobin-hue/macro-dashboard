@@ -38,3 +38,8 @@
 - docs: MEMORY.md에 "보안 관련 결정" 섹션 신설, API 키 유출 경로와 수정 내역 기록
 - fix: 배포 서버가 버전 미고정 상태로 최신 numpy/pandas/wordcloud 조합을 설치하며 발생한 `Segmentation fault` 수정 — `requirements.txt` 전체 의존성을 로컬 검증된 버전으로 고정
 - docs: MEMORY.md에 "배포 트러블슈팅" 섹션 신설
+- style: 시장탭 지수명 단순화 ("Nasdaq 종합지수"→"Nasdaq", "다우존스 산업평균지수"→"Dow Jones")
+- feat: 금리탭 스프레드 차트에 "장단기금리차(10Y-2Y)" 라벨 및 역전 기준선(0) 추가
+- refactor: 가치평가탭 반도체 버블 지수를 최상단으로 재배치
+- feat: 차트 확대(스크롤)·이동(드래그) 기능 재도입 — 이전엔 브러시+미니맵 방식의 버그로 되돌렸으나, `bind="scales"` 방식으로 재구현해 동일 버그 없이 동작 확인
+- docs: MEMORY.md에 줌 기능 재구현 방식과 이전 실패 원인 기록
