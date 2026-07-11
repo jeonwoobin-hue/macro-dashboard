@@ -165,8 +165,8 @@ with tab_market:
         market_indices = [
             (c1, "^KS11", "KOSPI", "한국 대표 증시 지수. 국내 대형주 중심."),
             (c2, "^KQ11", "KOSDAQ", "한국 성장·중소형주 중심 지수. 코스피 대비 변동성이 큼."),
-            (c3, "^IXIC", "Nasdaq 종합지수", "미국 기술주 중심 지수. 성장주·금리 민감도가 높음."),
-            (c4, "^DJI", "다우존스 산업평균지수", "미국 대형 우량주 30종목 지수. 경기민감·전통산업 비중이 큼."),
+            (c3, "^IXIC", "Nasdaq", "미국 기술주 중심 지수. 성장주·금리 민감도가 높음."),
+            (c4, "^DJI", "Dow Jones", "미국 대형 우량주 30종목 지수. 경기민감·전통산업 비중이 큼."),
         ]
         for col, symbol, name, desc in market_indices:
             with col:
@@ -422,12 +422,50 @@ with tab_rates:
         ),
         width="stretch",
     )
+    st.markdown("**장단기금리차 (10Y-2Y 스프레드)**")
     st.altair_chart(
-        zoom_chart(merged, x="date", y="10Y-2Y 스프레드", y_title="%p"), width="stretch"
+        zoom_chart(merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)"),
+        width="stretch",
     )
 
 # ── 가치평가 ────────────────────────────────────────────────
 with tab_valuation:
+    st.subheader("반도체 버블 지수 (닷컴버블 vs AI·반도체 랠리)")
+    st.caption(
+        "PHLX 반도체지수(SOX)를 각 랠리 시작월 = 100으로 지수화해 상승폭을 직접 비교합니다. "
+        "닷컴버블(1995~2002)과 현재 AI·반도체 랠리(2019~)의 궤적을 겹쳐서 과열 정도를 가늠해볼 수 있습니다."
+    )
+    sox = get_yahoo_series("^SOX", "1994-01-01")
+
+    def indexed_window(df: pd.DataFrame, start: str, months: int, label: str) -> pd.DataFrame:
+        window = df[df["date"] >= pd.to_datetime(start)].head(months).copy()
+        if window.empty:
+            return window
+        window["months_since_start"] = range(len(window))
+        window["지수화(시작월=100)"] = window["close"] / window["close"].iloc[0] * 100
+        window["구간"] = label
+        return window
+
+    dotcom = indexed_window(sox, "1995-01-01", 96, "닷컴버블(1995~2002)")
+    current_rally = indexed_window(sox, "2019-01-01", 96, "AI·반도체 랠리(2019~)")
+    combo = pd.concat([dotcom, current_rally], ignore_index=True)
+
+    st.altair_chart(
+        zoom_chart(
+            combo,
+            x="months_since_start",
+            y="지수화(시작월=100)",
+            color="구간",
+            color_domain=["닷컴버블(1995~2002)", "AI·반도체 랠리(2019~)"],
+            color_range=["#B279A2", "#E45756"],
+            y_title="지수화(시작월=100)",
+            x_type="Q",
+        ),
+        width="stretch",
+    )
+
+    st.divider()
+
     st.subheader("Shiller PE (CAPE Ratio)")
     st.caption(
         "경기조정주가수익비율(S&P500 10년 평균 실질이익 기준). 장기 평균(약 17)보다 높을수록 역사적으로 고평가 구간. "
@@ -469,42 +507,6 @@ with tab_valuation:
         st.altair_chart(
             zoom_chart(buffett_view, x="date", y="지수화", y_title="버핏지수(장기평균=100)"), width="stretch"
         )
-
-    st.divider()
-
-    st.subheader("반도체 버블 지수 (닷컴버블 vs AI·반도체 랠리)")
-    st.caption(
-        "PHLX 반도체지수(SOX)를 각 랠리 시작월 = 100으로 지수화해 상승폭을 직접 비교합니다. "
-        "닷컴버블(1995~2002)과 현재 AI·반도체 랠리(2019~)의 궤적을 겹쳐서 과열 정도를 가늠해볼 수 있습니다."
-    )
-    sox = get_yahoo_series("^SOX", "1994-01-01")
-
-    def indexed_window(df: pd.DataFrame, start: str, months: int, label: str) -> pd.DataFrame:
-        window = df[df["date"] >= pd.to_datetime(start)].head(months).copy()
-        if window.empty:
-            return window
-        window["months_since_start"] = range(len(window))
-        window["지수화(시작월=100)"] = window["close"] / window["close"].iloc[0] * 100
-        window["구간"] = label
-        return window
-
-    dotcom = indexed_window(sox, "1995-01-01", 96, "닷컴버블(1995~2002)")
-    current_rally = indexed_window(sox, "2019-01-01", 96, "AI·반도체 랠리(2019~)")
-    combo = pd.concat([dotcom, current_rally], ignore_index=True)
-
-    st.altair_chart(
-        zoom_chart(
-            combo,
-            x="months_since_start",
-            y="지수화(시작월=100)",
-            color="구간",
-            color_domain=["닷컴버블(1995~2002)", "AI·반도체 랠리(2019~)"],
-            color_range=["#B279A2", "#E45756"],
-            y_title="지수화(시작월=100)",
-            x_type="Q",
-        ),
-        width="stretch",
-    )
 
 # ── 인간지표 (시장 심리) ──────────────────────────────────────
 with tab_sentiment:

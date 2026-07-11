@@ -44,4 +44,8 @@ def zoom_chart(
         )
         chart = chart + rule
 
-    return chart
+    # 마우스 스크롤로 확대, 드래그로 이동 (더블클릭으로 원래대로).
+    # scale 도메인을 selection 값에 직접 바인딩하지 않고 Vega-Lite 내장 pan/zoom을
+    # 사용하므로, 과거에 있었던 "초기 미선택 상태에서 축이 틀어지는" 문제가 없다.
+    zoom = alt.selection_interval(bind="scales", encodings=["x"])
+    return chart.add_params(zoom)
