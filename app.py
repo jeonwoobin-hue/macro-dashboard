@@ -575,6 +575,18 @@ with tab_sentiment:
         width="stretch",
     )
 
+    st.divider()
+
+    st.subheader("MOVE Index (채권시장 변동성지수)")
+    st.caption(
+        "ICE BofA MOVE Index. 미국 국채 옵션 내재변동성으로 산출하는 채권시장 버전 VIX입니다. "
+        "값이 높을수록 금리·채권시장의 불안심리가 크다는 의미입니다."
+    )
+    move = get_yahoo_series("^MOVE", str(start_date), interval="1d")
+    latest_move = move.iloc[-1]
+    st.metric(f"최근 MOVE ({latest_move['date'].strftime('%Y-%m-%d')})", f"{latest_move['close']:.1f}")
+    st.altair_chart(zoom_chart(move, x="date", y="close", y_title="MOVE"), width="stretch")
+
 # ── 뉴스 ────────────────────────────────────────────────────
 with tab_news:
     st.subheader("어제자 경제 뉴스 Top 10")
