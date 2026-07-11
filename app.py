@@ -74,13 +74,22 @@ with menu_col:
 # ── 사이드바 ────────────────────────────────────────────────
 with st.sidebar:
     st.header("설정")
+
     default_fred_key = get_secret("FRED_API_KEY")
-    api_key = st.text_input("FRED API Key", value=default_fred_key, type="password")
-    st.caption("무료 발급: https://fred.stlouisfed.org/docs/api/api_key.html")
+    if default_fred_key:
+        api_key = default_fred_key
+        st.success("FRED API 연결됨")
+    else:
+        api_key = st.text_input("FRED API Key", type="password")
+        st.caption("무료 발급: https://fred.stlouisfed.org/docs/api/api_key.html")
 
     default_ecos_key = get_secret("ECOS_API_KEY")
-    ecos_key = st.text_input("ECOS API Key (한국 경기종합지수용)", value=default_ecos_key, type="password")
-    st.caption("무료 발급: https://ecos.bok.or.kr/api/")
+    if default_ecos_key:
+        ecos_key = default_ecos_key
+        st.success("ECOS API 연결됨")
+    else:
+        ecos_key = st.text_input("ECOS API Key (한국 경기종합지수용)", type="password")
+        st.caption("무료 발급: https://ecos.bok.or.kr/api/")
 
     start_date = st.date_input("조회 시작일", value=pd.to_datetime("2018-01-01"))
     st.divider()

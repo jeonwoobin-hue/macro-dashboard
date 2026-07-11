@@ -13,7 +13,11 @@ def fetch_ecos_monthly(item_code: str, api_key: str, start_yyyymm: str, end_yyyy
     """한국은행 ECOS에서 경기종합지수(순환변동치) 월별 시계열을 가져온다."""
     url = f"{ECOS_URL}/{api_key}/json/kr/1/500/{COMPOSITE_INDEX_STAT_CODE}/M/{start_yyyymm}/{end_yyyymm}/{item_code}"
     resp = requests.get(url, timeout=15)
-    resp.raise_for_status()
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError:
+        # 원본 예외 메시지에는 api_key가 URL 경로에 그대로 들어있어 화면에 노출될 수 있으므로 감춘다.
+        raise requests.HTTPError(f"ECOS API 요청 실패 (status {resp.status_code}, item_code={item_code})") from None
     payload = resp.json()
 
     if "RESULT" in payload:

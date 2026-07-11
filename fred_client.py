@@ -13,7 +13,11 @@ def fetch_fred_series(series_id: str, api_key: str, start_date: str) -> pd.DataF
         "observation_start": start_date,
     }
     resp = requests.get(FRED_OBS_URL, params=params, timeout=15)
-    resp.raise_for_status()
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError:
+        # 원본 예외 메시지에는 api_key가 포함된 URL이 그대로 들어있어 화면에 노출될 수 있으므로 감춘다.
+        raise requests.HTTPError(f"FRED API 요청 실패 (status {resp.status_code}, series_id={series_id})") from None
     observations = resp.json().get("observations", [])
     df = pd.DataFrame(observations)[["date", "value"]]
     df["date"] = pd.to_datetime(df["date"])
