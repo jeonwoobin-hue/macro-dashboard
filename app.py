@@ -31,17 +31,21 @@ def get_secret(name: str) -> str:
 st.set_page_config(page_title="거시경제 투자심리 대시보드", layout="wide")
 
 # ── 가로 스크롤(3~4개 차트 카드) 전용 CSS ───────────────────
+# 768px 이상(데스크톱/태블릿)에서만 가로 스크롤 적용. 그보다 좁은 화면(휴대폰)에서는
+# 이 규칙이 아예 적용되지 않아 Streamlit 기본 동작대로 카드가 세로로 쌓인다.
 st.markdown(
     """
     <style>
-    div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        padding-bottom: 0.6rem;
-    }
-    div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-        min-width: 340px;
-        flex: 0 0 340px;
+    @media (min-width: 768px) {
+        div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 0.6rem;
+        }
+        div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 340px;
+            flex: 0 0 340px;
+        }
     }
     </style>
     """,
