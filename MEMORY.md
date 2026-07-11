@@ -45,6 +45,12 @@
 - **예외 메시지를 통한 키 유출도 함께 차단**: `fred_client.py`/`ecos_client.py`는 API 키를 URL(쿼리스트링 또는 경로)에 그대로 넣어 요청함. `requests`의 `HTTPError` 기본 메시지는 요청 URL 전체를 포함하므로, 처리되지 않은 예외가 Streamlit 화면에 그대로 노출되면 그 안에 키가 포함될 수 있었음. 두 클라이언트 모두 `raise_for_status()`를 try/except로 감싸서 URL이 빠진 메시지로 다시 raise하도록 수정.
 - **일반 원칙**: 이 프로젝트처럼 "Secrets에 키를 넣고 방문자와 URL만 공유"하는 배포 형태에서는, 서버가 아는 값이 클라이언트로 왕복하는 모든 경로(위젯 기본값, 에러 메시지, 로그 출력 등)를 잠재적 유출 지점으로 의심할 것.
 
+## 배포 트러블슈팅
+
+- **`requirements.txt`에 버전을 안 박아두면 위험하다**: 처음 배포 시 `streamlit`, `pandas`, `wordcloud` 등을 버전 없이 적어뒀더니, Streamlit Cloud가 배포 시점에 최신 버전들을 새로 조합해 설치하면서 numpy와 wordcloud/pandas/matplotlib 계열 바이너리(C 확장) 간 ABI 비호환이 발생 → 앱 시작 직후 `Segmentation fault`로 즉시 죽음(Python 예외/트레이스백조차 없이 네이티브 크래시라 원인 파악이 어려웠음). 로그에서 `/app/scripts/run-streamlit.sh: line 9: <PID> Segmentation fault`처럼 파이썬 트레이스백 없이 바로 죽으면 십중팔구 이 패턴.
+  - 해결: 로컬에서 실제로 정상 동작하는 정확한 버전 조합을 `pip freeze`로 뽑아서 `requirements.txt`에 전부 `==`로 고정(streamlit, pandas, numpy, pillow, matplotlib, pyarrow, altair, wordcloud, lxml, beautifulsoup4 등 전이 의존성까지 명시적으로). 로컬 Python 버전(3.14)과 배포 서버 Python 버전이 같아서 그대로 이식 가능했음.
+  - **교훈: 배포용 `requirements.txt`는 항상 버전을 고정할 것.** 버전 미고정은 "지금은 되는데 나중에 재배포하면 깨질 수 있는" 잠재적 시한폭탄이다.
+
 ## 미해결/다음에 고려할 것
 
 - `zoom_chart` 함수명이 기능과 안 맞음(브러시 제거 후에도 이름 유지 중). 다음에 대규모로 손댈 일이 생기면 이름 정리 고려.

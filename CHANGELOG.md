@@ -36,3 +36,5 @@
 - fix(security): 사이드바 FRED/ECOS API Key 입력창이 `type=password`임에도 실제 값이 브라우저로 그대로 전송되어 개발자도구로 열람 가능했던 문제 수정. Secrets에 키가 설정된 경우 입력창 대신 연결 상태만 표시하도록 변경
 - fix(security): FRED/ECOS API 요청 실패 시 예외 메시지에 키가 포함된 URL이 그대로 노출되던 문제 수정 (`fred_client.py`, `ecos_client.py`)
 - docs: MEMORY.md에 "보안 관련 결정" 섹션 신설, API 키 유출 경로와 수정 내역 기록
+- fix: 배포 서버가 버전 미고정 상태로 최신 numpy/pandas/wordcloud 조합을 설치하며 발생한 `Segmentation fault` 수정 — `requirements.txt` 전체 의존성을 로컬 검증된 버전으로 고정
+- docs: MEMORY.md에 "배포 트러블슈팅" 섹션 신설
