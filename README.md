@@ -2,6 +2,9 @@
 
 주식 투자자를 위한 거시경제 지표 + 시장 심리 모니터링 Streamlit 대시보드.
 
+**배포 링크**: https://macro-dashboard-r3wrnmsfvuwtrqtrc3v3r7.streamlit.app
+**저장소**: https://github.com/jeonwoobin-hue/macro-dashboard
+
 ## 실행 방법
 
 ```

@@ -37,7 +37,7 @@
 - **줌/브러시 기능은 도입했다가 되돌림**: `alt.selection_interval` + `scale(domain=brush)` 조합이 초기(미선택) 상태에서 축 범위를 잘못 계산해 값이 틀어져 보이는 버그가 있었음. `charts.py`의 `zoom_chart()`는 현재 브러시 없이 일반 차트만 그림(함수명은 유지, 기능은 제거됨 — 이름 변경은 호출부 전체를 건드려야 해서 보류 중).
 - 다중 시리즈 차트의 범례는 `legend=alt.Legend(orient="top-left", ...)`로 차트 내부에 오버레이. 기본(오른쪽 바깥) 배치는 범례 있는 차트만 플롯 영역이 좁아져 같은 행의 다른 카드와 크기가 안 맞는 문제가 있었음.
 - 3~4개 차트를 한 행에 배치할 때는 `st.container(key="scrollrow_xxx")` + CSS(`flex-wrap: nowrap; overflow-x: auto`)로 가로 스크롤 처리.
-- 한글 폰트가 필요한 곳(워드클라우드)은 시스템에 기본 설치된 `C:\Windows\Fonts\malgun.ttf` 사용.
+- ~~한글 폰트가 필요한 곳(워드클라우드)은 시스템에 기본 설치된 `C:\Windows\Fonts\malgun.ttf` 사용~~ → **버그였음**: Streamlit Community Cloud(Linux)에는 이 경로가 없어서 `OSError: cannot open resource`로 앱 전체가 죽었음(배포 후 실제로 발생). 2026-07-11 수정: 오픈소스 나눔고딕(OFL 라이선스, google/fonts 저장소)을 `fonts/NanumGothic-Regular.ttf`로 리포에 직접 번들링하고, `os.path.join(os.path.dirname(__file__), "fonts", ...)` 상대경로로 참조하도록 변경. **교훈: 로컬 전용 절대경로(OS별 시스템 폰트, 특정 드라이브 경로 등)는 클라우드 배포 시 반드시 깨진다 — 리소스 파일은 항상 프로젝트 안에 번들링하고 상대경로로 참조할 것.**
 
 ## 미해결/다음에 고려할 것
 

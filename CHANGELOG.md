@@ -31,3 +31,5 @@
 - chore: Streamlit Community Cloud 배포를 위해 git 저장소 초기화 (`.gitignore`로 `.env`/`__pycache__`/`sentiment_raw_posts.json`/`.claude` 제외)
 - feat: API 키 로딩에 `st.secrets` 지원 추가 (`get_secret()` 헬퍼) — 로컬 `.env`와 Streamlit Cloud Secrets 둘 다 지원, 기존 동작은 그대로 유지
 - docs: README.md에 Streamlit Community Cloud 배포 절차 추가
+- deploy: GitHub 저장소(jeonwoobin-hue/macro-dashboard) 연결 및 Streamlit Community Cloud 최초 배포
+- fix: 워드클라우드가 Windows 전용 폰트 경로(`C:\Windows\Fonts\malgun.ttf`)를 하드코딩해서 Streamlit Cloud(Linux)에서 `OSError`로 앱이 죽던 문제 수정. 오픈소스 나눔고딕 폰트를 `fonts/`에 번들링하고 상대경로로 참조하도록 변경
