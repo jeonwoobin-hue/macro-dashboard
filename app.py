@@ -107,7 +107,7 @@ def get_ecos_series(item_code: str, key: str, start_yyyymm: str, end_yyyymm: str
     return fetch_ecos_monthly(item_code, key, start_yyyymm, end_yyyymm)
 
 
-KOREAN_FONT_PATH = r"C:\Windows\Fonts\malgun.ttf"
+KOREAN_FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "NanumGothic-Regular.ttf")
 
 
 @st.cache_data(ttl=3600)
