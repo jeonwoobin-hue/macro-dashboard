@@ -15,6 +15,10 @@ from news_client import fetch_top_economic_news
 
 load_dotenv()
 
+# 경제지표는 보통 하루 한 번만 갱신되고, FRED/ECOS 모두 분당 호출 한도가 있어
+# 여러 사람이 동시에 써도 한도를 넘기지 않도록 캐시를 넉넉히(6시간) 유지한다.
+CACHE_TTL_SECONDS = 6 * 60 * 60
+
 
 def get_secret(name: str) -> str:
     """로컬(.env)과 Streamlit Community Cloud(secrets.toml) 둘 다 지원."""
@@ -95,25 +99,25 @@ with st.sidebar:
 
     start_date = st.date_input("조회 시작일", value=pd.to_datetime("2018-01-01"))
     st.divider()
-    st.caption("데이터는 1시간 캐시됩니다. 최신값이 필요하면 새로고침하세요.")
+    st.caption("데이터는 6시간 캐시됩니다(API 호출 한도 보호 목적). 최신값이 필요하면 새로고침하세요.")
 
 if not api_key:
     st.warning("사이드바에 FRED API Key를 입력해야 자동 지표(물가·고용·금리)를 불러올 수 있습니다.")
     st.stop()
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
 def get_series(series_id: str, start: str, key: str) -> pd.DataFrame:
     df = fetch_fred_series(series_id, key, start)
     return add_change_columns(df)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
 def get_yahoo_series(symbol: str, start: str, interval: str = "1mo") -> pd.DataFrame:
     return fetch_yahoo_series(symbol, start, interval=interval)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
 def get_ecos_series(item_code: str, key: str, start_yyyymm: str, end_yyyymm: str) -> pd.DataFrame:
     return fetch_ecos_monthly(item_code, key, start_yyyymm, end_yyyymm)
 
@@ -121,7 +125,7 @@ def get_ecos_series(item_code: str, key: str, start_yyyymm: str, end_yyyymm: str
 WORDCLOUD_DIR = os.path.join(os.path.dirname(__file__), "wordclouds")
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
 def get_news(date_str: str, top_n: int = 10) -> list[dict]:
     return fetch_top_economic_news(date_str, top_n=top_n)
 

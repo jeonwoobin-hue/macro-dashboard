@@ -1,6 +1,8 @@
 import requests
 import pandas as pd
 
+from http_utils import get_with_retry
+
 FRED_OBS_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 
@@ -12,7 +14,7 @@ def fetch_fred_series(series_id: str, api_key: str, start_date: str) -> pd.DataF
         "file_type": "json",
         "observation_start": start_date,
     }
-    resp = requests.get(FRED_OBS_URL, params=params, timeout=15)
+    resp = get_with_retry(FRED_OBS_URL, params=params, timeout=15)
     try:
         resp.raise_for_status()
     except requests.HTTPError:

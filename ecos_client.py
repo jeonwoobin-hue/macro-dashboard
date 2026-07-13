@@ -1,6 +1,8 @@
 import requests
 import pandas as pd
 
+from http_utils import get_with_retry
+
 ECOS_URL = "https://ecos.bok.or.kr/api/StatisticSearch"
 
 # 8.1.2. 경기종합지수 (2020=100)
@@ -12,7 +14,7 @@ COINCIDENT_INDEX_ITEM = "I16D"  # 동행지수순환변동치
 def fetch_ecos_monthly(item_code: str, api_key: str, start_yyyymm: str, end_yyyymm: str) -> pd.DataFrame:
     """한국은행 ECOS에서 경기종합지수(순환변동치) 월별 시계열을 가져온다."""
     url = f"{ECOS_URL}/{api_key}/json/kr/1/500/{COMPOSITE_INDEX_STAT_CODE}/M/{start_yyyymm}/{end_yyyymm}/{item_code}"
-    resp = requests.get(url, timeout=15)
+    resp = get_with_retry(url, timeout=15)
     try:
         resp.raise_for_status()
     except requests.HTTPError:
