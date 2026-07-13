@@ -24,6 +24,8 @@ streamlit run app.py
 
 FRED 키가 없으면 앱이 시작 화면에서 멈춘다(필수). ECOS 키가 없으면 경기·연준 탭의 한국 지수 섹션만 비활성화되고 나머지는 정상 작동한다.
 
+**API 호출 한도 보호**: 여러 사람이 동시에 링크에 접속해도 FRED/ECOS 호출 한도(분당 제한)를 넘기지 않도록, 모든 외부 API 응답은 6시간 캐시된다(`CACHE_TTL_SECONDS`, `app.py`). 그래도 429(Too Many Requests) 응답을 받으면 `http_utils.get_with_retry()`가 지수 백오프로 자동 재시도한다.
+
 ## 배포 (Streamlit Community Cloud)
 
 친구 등 외부에 공유할 URL이 필요하면 무료로 배포할 수 있다.
@@ -58,6 +60,7 @@ fred_client.py            FRED API 클라이언트
 ecos_client.py            한국은행 ECOS API 클라이언트
 market_data.py            Yahoo Finance 공개 차트 API 클라이언트 (지수·주가)
 news_client.py             네이버 뉴스 랭킹 기반 경제 뉴스 Top N 추출 클라이언트
+http_utils.py              공용 HTTP 재시도 헬퍼 (429 지수 백오프)
 sentiment_scraper.py      디시인사이드 크롤링 + 키워드 감성분류 스크립트 (독립 실행, 로컬 전용)
 wordcloud_gen.py           sentiment_data.json으로 워드클라우드 PNG를 미리 생성 (독립 실행, 로컬 전용)
 manual_ism_pmi.csv        ISM 서비스 PMI 수동 입력 데이터 (앱 내 표에서 편집 가능)

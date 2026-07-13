@@ -50,3 +50,6 @@
 - fix: 네 번째 세그폴트 재발 이후, matplotlib/wordcloud를 배포 런타임에서 완전히 제거 — 워드클라우드 PNG를 로컬에서 미리 생성하는 `wordcloud_gen.py` 신설, `app.py`는 정적 이미지 파일만 읽도록 변경
 - chore: `requirements.txt`에서 `wordcloud`/`matplotlib` 제거 (배포 환경에 더 이상 설치되지 않음)
 - docs: MEMORY.md/README.md에 워드클라우드 사전생성 워크플로 반영
+- feat: FRED/ECOS API 429 대응 — 신규 http_utils.py에 지수 백오프 재시도 추가, fred_client.py/ecos_client.py 적용
+- feat: 데이터 캐시 TTL을 1시간에서 6시간으로 확대(CACHE_TTL_SECONDS 상수), API 호출 빈도 절감
+- docs: README.md/MEMORY.md에 API 호출 한도 대응 방식 기록

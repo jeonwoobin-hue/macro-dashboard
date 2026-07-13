@@ -46,6 +46,13 @@
 - **예외 메시지를 통한 키 유출도 함께 차단**: `fred_client.py`/`ecos_client.py`는 API 키를 URL(쿼리스트링 또는 경로)에 그대로 넣어 요청함. `requests`의 `HTTPError` 기본 메시지는 요청 URL 전체를 포함하므로, 처리되지 않은 예외가 Streamlit 화면에 그대로 노출되면 그 안에 키가 포함될 수 있었음. 두 클라이언트 모두 `raise_for_status()`를 try/except로 감싸서 URL이 빠진 메시지로 다시 raise하도록 수정.
 - **일반 원칙**: 이 프로젝트처럼 "Secrets에 키를 넣고 방문자와 URL만 공유"하는 배포 형태에서는, 서버가 아는 값이 클라이언트로 왕복하는 모든 경로(위젯 기본값, 에러 메시지, 로그 출력 등)를 잠재적 유출 지점으로 의심할 것.
 
+## API 호출 한도(rate limit) 대응
+
+- **배경**: 앱을 지인들에게 공유하기 시작하면서, FRED·한국은행 ECOS 둘 다 분당 호출 횟수 제한이 있어 동시 접속이 늘면 429(Too Many Requests)를 받을 수 있다는 우려가 제기됨. 경제지표는 보통 하루 한 번만 갱신되므로 캐시를 길게 잡아도 신선도 손해가 거의 없다는 게 핵심 전제.
+- **캐시 TTL 확대**: `app.py`의 `get_series`/`get_ecos_series`/`get_yahoo_series`/`get_news` 캐시를 1시간 → 6시간(`CACHE_TTL_SECONDS` 상수)으로 늘림. 값을 상수 하나로 통일해서 나중에 조정하기 쉽게 함.
+- **429 재시도**: 신규 `http_utils.py`의 `get_with_retry()`가 `fred_client.py`/`ecos_client.py`의 모든 요청을 감쌈. 429를 받으면 `Retry-After` 헤더가 있으면 그 값을, 없으면 지수 백오프(1s, 2s, 4s, 8s + 지터)로 최대 4회 재시도. 그래도 계속 429면 예외를 그대로 올려서(단, API 키는 이미 메시지에서 빠져 있음) 호출부가 에러를 인지할 수 있게 함 — 무한 대기는 아님.
+- **검증 방법**: 실제 429를 인위적으로 재현하기 어려워서, `unittest.mock.patch`로 `requests.get`을 모킹해 "두 번은 429, 세 번째는 200" 시나리오와 "계속 429" 시나리오 둘 다 유닛 테스트로 확인함(둘 다 로컬에서 직접 실행, 커밋에는 포함 안 함 — 필요하면 재현 스니펫은 이 대화 기록 참고).
+
 ## 배포 트러블슈팅
 
 - **`requirements.txt`에 버전을 안 박아두면 위험하다**: 처음 배포 시 `streamlit`, `pandas`, `wordcloud` 등을 버전 없이 적어뒀더니, Streamlit Cloud가 배포 시점에 최신 버전들을 새로 조합해 설치하면서 numpy와 wordcloud/pandas/matplotlib 계열 바이너리(C 확장) 간 ABI 비호환이 발생 → 앱 시작 직후 `Segmentation fault`로 즉시 죽음(Python 예외/트레이스백조차 없이 네이티브 크래시라 원인 파악이 어려웠음). 로그에서 `/app/scripts/run-streamlit.sh: line 9: <PID> Segmentation fault`처럼 파이썬 트레이스백 없이 바로 죽으면 십중팔구 이 패턴.
