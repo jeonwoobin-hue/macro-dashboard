@@ -55,6 +55,12 @@
   1. 앱이 매 세션마다 FRED·ECOS·Yahoo Finance·네이버뉴스·디시인사이드 등 외부 API를 ~20회 순차 호출(각 `timeout=15`)하는데, 배포 서버 IP가 일부 사이트에서 느리게 응답/차단당해 타임아웃이 누적되며 "3분 넘게 로딩"으로 보였을 가능성.
   2. `wordcloud`가 내부적으로 `matplotlib`을 불러오는데, 컨테이너가 매번 새로 뜨는 배포 환경에서는 기본 폰트캐시 경로 쓰기가 느리거나 문제를 일으킬 수 있음 → `MPLCONFIGDIR`을 `tempfile.gettempdir()` 기반 경로로 명시 지정해서 완화 시도(2026-07-11 커밋). **다만 로컬에서 콜드캐시로 재현했을 때 import는 0.35초에 불과해 이 가설이 얼마나 실제 원인인지는 확신 없음.**
   - 세그폴트는 Python 예외로 안 잡히고 트레이스백도 안 남아서 원인 특정이 어려움. 이 문제가 계속되면 다음으로 시도할 것: (a) 탭별로 실제 클릭 전까지는 데이터를 안 불러오는 지연 로딩 구조로 변경(현재는 `st.tabs()` 특성상 매 실행마다 8개 탭 전부의 코드가 돌아감), (b) 외부 요청 타임아웃을 15초보다 훨씬 짧게 줄이고 실패를 조용히 무시하도록 방어적으로 수정, (c) Streamlit Cloud 유료 티어로 리소스 한도를 늘려보기.
+- **`MPLCONFIGDIR` 지정 후에도 네 번째 세그폴트 발생 (2026-07-13)** → matplotlib을 배포 런타임에서 아예 제거하는 방향으로 전환. `wordcloud`(내부적으로 matplotlib 사용)를 `app.py`에서 완전히 뺐다:
+  - 신규 `wordcloud_gen.py`(로컬 전용 스크립트)가 `sentiment_data.json`을 읽어 워드클라우드 PNG 8장을 `wordclouds/bucket_{0..3}_{positive,negative}.png`로 미리 생성해 저장.
+  - `app.py`는 `from wordcloud import WordCloud` 자체를 삭제하고, `wordclouds/` 폴더의 정적 PNG 파일을 `st.image(경로)`로 읽기만 함. `MPLCONFIGDIR` 설정 코드도 더 이상 필요 없어져서 함께 제거.
+  - `requirements.txt`에서 `wordcloud`, `matplotlib`(및 그 전이 의존성)를 제거 — 배포 환경에는 이제 matplotlib이 설치조차 안 됨. `wordcloud`는 `wordcloud_gen.py`를 로컬에서 돌릴 때만 `pip install wordcloud`로 별도 설치.
+  - **아직 100% 확신은 없음** — 이게 진짜 근본 원인이었는지는 다음 배포에서 세그폴트가 재발하는지로 판단할 것. 만약 이후에도 재발하면 위 (a)(외부 API 순차 호출 부담) 쪽을 다음으로 의심할 차례.
+  - **교훈: 배포 런타임에서 결과가 매번 똑같이 나오는 무거운 네이티브 라이브러리 작업(이미지 렌더링 등)은 굳이 실시간으로 돌리지 말고, 로컬에서 미리 만들어 정적 파일로 커밋하는 편이 훨씬 안전하다.**
 
 ## 미해결/다음에 고려할 것
 

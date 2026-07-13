@@ -42,7 +42,12 @@ FRED 키가 없으면 앱이 시작 화면에서 멈춘다(필수). ECOS 키가 
    ```
 5. 발급된 `https://xxxx.streamlit.app` 링크를 공유하면 된다.
 
-`sentiment_data.json`, `manual_*.csv`는 저장소에 포함되어 배포 직후에도 값이 채워진 채로 보인다. 최신 데이터로 갱신하려면 로컬에서 `python sentiment_scraper.py` 등을 다시 실행하고 커밋·푸시한다.
+`sentiment_data.json`, `wordclouds/*.png`, `manual_*.csv`는 저장소에 포함되어 배포 직후에도 값이 채워진 채로 보인다. 최신 데이터로 갱신하려면 로컬에서 아래 두 스크립트를 순서대로 다시 실행하고 커밋·푸시한다.
+```
+python sentiment_scraper.py
+python wordcloud_gen.py
+```
+`wordcloud_gen.py`는 로컬 전용 도구라 `requirements.txt`에는 없다. 처음 실행 전 `pip install wordcloud`로 따로 설치한다(배포 서버에서 matplotlib 관련 네이티브 크래시가 반복돼, 워드클라우드 이미지 생성을 배포 런타임에서 완전히 분리했다 — 자세한 배경은 MEMORY.md 참고).
 
 ## 프로젝트 구조
 
@@ -53,12 +58,14 @@ fred_client.py            FRED API 클라이언트
 ecos_client.py            한국은행 ECOS API 클라이언트
 market_data.py            Yahoo Finance 공개 차트 API 클라이언트 (지수·주가)
 news_client.py             네이버 뉴스 랭킹 기반 경제 뉴스 Top N 추출 클라이언트
-sentiment_scraper.py      디시인사이드 크롤링 + 키워드 감성분류 스크립트 (독립 실행)
+sentiment_scraper.py      디시인사이드 크롤링 + 키워드 감성분류 스크립트 (독립 실행, 로컬 전용)
+wordcloud_gen.py           sentiment_data.json으로 워드클라우드 PNG를 미리 생성 (독립 실행, 로컬 전용)
 manual_ism_pmi.csv        ISM 서비스 PMI 수동 입력 데이터 (앱 내 표에서 편집 가능)
 manual_fomc.csv           FOMC 점도표 수동 입력 데이터 (앱 내 표에서 편집 가능)
 manual_shiller_pe.csv     Shiller PE 히스토리 (multpl.com 스크랩, 1995~)
 sentiment_raw_posts.json  디시인사이드 원본 게시글 캐시 (당일 재사용, 자동 생성)
 sentiment_data.json       감성분류 결과 (앱이 읽는 파일, 자동 생성)
+wordclouds/                긍정·부정 키워드 워드클라우드 PNG (앱이 읽는 정적 파일, 자동 생성)
 ```
 
 ## 모듈 추가 규칙 (장기 프로젝트 컨벤션)
