@@ -11,6 +11,7 @@ def zoom_chart(
     color_range: list[str] | None = None,
     y_title: str = "",
     x_type: str = "T",
+    x_sort: list[str] | None = None,
     mark: str = "line",
     rule_y: float | None = None,
     rule_label: str = "",
@@ -31,7 +32,7 @@ def zoom_chart(
 
     base = alt.Chart(data).mark_bar() if mark == "bar" else alt.Chart(data).mark_line(point=False)
     chart = base.encode(
-        x=alt.X(x_field, title=""),
+        x=alt.X(x_field, title="", sort=x_sort if x_sort is not None else alt.Undefined),
         y=alt.Y(y_field, title=y_title, scale=alt.Scale(zero=False)),
         color=color_enc,
         tooltip=tooltip,

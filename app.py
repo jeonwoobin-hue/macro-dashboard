@@ -141,8 +141,36 @@ def show_latest_metric(df: pd.DataFrame, col: str, label: str, suffix: str = "%"
     )
 
 
+@st.dialog("국내주식 인간지표 — 일별 긍정/부정 점유율 추이")
+def show_sentiment_history_dialog():
+    try:
+        history_df = pd.read_csv("sentiment_history.csv", parse_dates=["date"]).sort_values("date")
+    except FileNotFoundError:
+        history_df = pd.DataFrame()
+    if history_df.empty:
+        st.info("아직 누적된 히스토리 데이터가 없습니다. 매일 자동 수집이 쌓이면 여기에 표시됩니다.")
+        return
+    st.caption(f"데이터 수집 시작: {history_df['date'].min().strftime('%Y-%m-%d')}부터 · 총 {len(history_df)}일치")
+    long_hist = history_df.melt(
+        id_vars="date", value_vars=["positive_pct", "negative_pct"], var_name="구분", value_name="점유율(%)"
+    )
+    long_hist["구분"] = long_hist["구분"].map({"positive_pct": "긍정", "negative_pct": "부정"})
+    st.altair_chart(
+        zoom_chart(
+            long_hist,
+            x="date",
+            y="점유율(%)",
+            color="구분",
+            color_domain=["긍정", "부정"],
+            color_range=["#54A24B", "#E45756"],
+            y_title="점유율(%)",
+        ),
+        width="stretch",
+    )
+
+
 tab_market, tab_inflation, tab_labor, tab_growth_fed, tab_rates, tab_valuation, tab_sentiment, tab_news = st.tabs(
-    ["📈 시장", "🔥 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "📰 뉴스"]
+    ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "📰 뉴스"]
 )
 
 # ── 시장 ────────────────────────────────────────────────────
@@ -153,7 +181,7 @@ with tab_market:
         market_indices = [
             (c1, "^KS11", "KOSPI", "한국 대표 증시 지수. 국내 대형주 중심.", "https://m.stock.naver.com/domestic/index/KOSPI/discussion"),
             (c2, "^KQ11", "KOSDAQ", "한국 성장·중소형주 중심 지수. 코스피 대비 변동성이 큼.", "https://m.stock.naver.com/domestic/index/KOSDAQ/discussion"),
-            (c3, "^IXIC", "Nasdaq", "미국 기술주 중심 지수. 성장주·금리 민감도가 높음.", "https://m.stock.naver.com/worldstock/index/.IXIC/discussion"),
+            (c3, "^IXIC", "NASDAQ", "미국 기술주 중심 지수. 성장주·금리 민감도가 높음.", "https://m.stock.naver.com/worldstock/index/.IXIC/discussion"),
             (c4, "^DJI", "Dow Jones", "미국 대형 우량주 30종목 지수. 경기민감·전통산업 비중이 큼.", None),
         ]
         for col, symbol, name, desc, discussion_url in market_indices:
@@ -239,7 +267,7 @@ with tab_labor:
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-            st.subheader("Nonfarm Payrolls")
+            st.subheader("비농업 고용")
             st.caption("비농업 부문 신규 고용자 수(전월 대비 증감, 천 명). 경기 모멘텀의 대표 선행 신호.")
             df = get_series("PAYEMS", str(start_date), api_key)
             show_latest_metric(df, "MoM_chg", "전월 대비 증감", suffix="K")
@@ -393,8 +421,16 @@ with tab_rates:
     c1, c2 = st.columns(2)
     with c1:
         latest = merged.iloc[-1]
-        st.metric("2Y", f"{latest['2Y']:.2f}%")
-        st.metric("10Y", f"{latest['10Y']:.2f}%")
+        prev = merged.iloc[-2]
+        latest_date = latest["date"].strftime("%Y-%m-%d")
+        for label, col in [("2년물", "2Y"), ("10년물", "10Y")]:
+            delta_abs = latest[col] - prev[col]
+            delta_pct = delta_abs / prev[col] * 100 if prev[col] else 0.0
+            st.metric(
+                f"{label} ({latest_date})",
+                f"{latest[col]:.2f}%",
+                delta=f"{delta_abs:+.3f}%p ({delta_pct:+.2f}%)",
+            )
     with c2:
         spread = latest["10Y-2Y 스프레드"]
         st.metric("10Y-2Y 스프레드", f"{spread:+.2f}%p", delta="역전 중" if spread < 0 else "정상")
@@ -420,6 +456,65 @@ with tab_rates:
         zoom_chart(merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)"),
         width="stretch",
     )
+
+    st.divider()
+
+    st.subheader("美 국채 수익률곡선 (Yield Curve)")
+    st.caption(
+        "만기별 국채금리를 연결한 곡선. 단기금리가 장기금리보다 높아 우하향(역전)되면 "
+        "경기침체를 앞두고 흔히 나타나는 신호로 해석됩니다. 1년 전과 비교해 곡선 형태 변화를 볼 수 있습니다."
+    )
+
+    YIELD_MATURITIES = [
+        ("1M", "DGS1MO"),
+        ("3M", "DGS3MO"),
+        ("6M", "DGS6MO"),
+        ("1Y", "DGS1"),
+        ("2Y", "DGS2"),
+        ("3Y", "DGS3"),
+        ("5Y", "DGS5"),
+        ("7Y", "DGS7"),
+        ("10Y", "DGS10"),
+        ("20Y", "DGS20"),
+        ("30Y", "DGS30"),
+    ]
+    yield_start = (pd.Timestamp.today() - pd.Timedelta(days=450)).strftime("%Y-%m-%d")
+    one_year_ago = pd.Timestamp.today() - pd.Timedelta(days=365)
+
+    curve_rows = []
+    latest_curve_date = None
+    for label, series_id in YIELD_MATURITIES:
+        s = get_series(series_id, yield_start, api_key).dropna(subset=["value"])
+        if s.empty:
+            continue
+        latest_row = s.iloc[-1]
+        if latest_curve_date is None:
+            latest_curve_date = latest_row["date"]
+        curve_rows.append({"만기": label, "금리(%)": latest_row["value"], "구분": "현재"})
+        past = s[s["date"] <= one_year_ago]
+        if not past.empty:
+            curve_rows.append({"만기": label, "금리(%)": past.iloc[-1]["value"], "구분": "1년 전"})
+
+    if curve_rows:
+        curve_df = pd.DataFrame(curve_rows)
+        maturity_order = [m[0] for m in YIELD_MATURITIES]
+        st.caption(f"기준일: {latest_curve_date.strftime('%Y-%m-%d')} (현재) vs 1년 전")
+        st.altair_chart(
+            zoom_chart(
+                curve_df,
+                x="만기",
+                y="금리(%)",
+                color="구분",
+                color_domain=["현재", "1년 전"],
+                color_range=["#E45756", "#B0B0B0"],
+                y_title="금리(%)",
+                x_type="O",
+                x_sort=maturity_order,
+            ),
+            width="stretch",
+        )
+    else:
+        st.info("수익률곡선 데이터를 불러오지 못했습니다.")
 
 # ── 가치평가 ────────────────────────────────────────────────
 with tab_valuation:
@@ -524,9 +619,22 @@ with tab_sentiment:
     else:
         st.caption(
             f"대상일: {sentiment_data['target_date']} (KST 09:00 ~ 익일 06:00) · "
-            f"총 수집 게시글 {sentiment_data['total_posts_scanned']:,}건 · "
             f"생성 시각: {sentiment_data['generated_at'][:16].replace('T', ' ')}"
         )
+
+        day_total = sentiment_data.get("total", {"positive_posts": 0, "negative_posts": 0})
+        day_pos = day_total["positive_posts"]
+        day_neg = day_total["negative_posts"]
+        day_classified = day_pos + day_neg
+        day_pos_pct = day_pos / day_classified * 100 if day_classified else 0.0
+        day_neg_pct = day_neg / day_classified * 100 if day_classified else 0.0
+        day_summary_text = (
+            f"수집 게시글 {sentiment_data['total_posts_scanned']:,}건, "
+            f"긍정 분류 {day_pos}건({day_pos_pct:.2f}%), "
+            f"부정 분류 {day_neg}건({day_neg_pct:.2f}%)"
+        )
+        if st.button(day_summary_text, key="sentiment_history_trigger", type="tertiary"):
+            show_sentiment_history_dialog()
 
         bucket_labels = list(sentiment_data["buckets"].keys())
         bucket_tabs = st.tabs(bucket_labels)

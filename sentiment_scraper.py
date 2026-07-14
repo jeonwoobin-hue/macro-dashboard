@@ -4,6 +4,7 @@
 
 단순 키워드 사전 기반 휴리스틱이며, 정교한 NLP 감성분석이 아니다.
 """
+import csv
 import json
 import os
 import time
@@ -24,6 +25,8 @@ TIME_BUDGET_SEC = 1200  # 안전장치: 최대 20분. 21시간 구간을 다 훑
 
 RAW_CACHE_PATH = "sentiment_raw_posts.json"
 OUTPUT_PATH = "sentiment_data.json"
+HISTORY_PATH = "sentiment_history.csv"
+HISTORY_FIELDS = ["date", "total_posts", "positive_posts", "negative_posts", "positive_pct", "negative_pct", "generated_at"]
 
 # (라벨, 09:00 기준 시작 오프셋(분), 종료 오프셋(분))
 WINDOWS = [
@@ -174,6 +177,22 @@ def build_output(raw: dict) -> dict:
         "buckets": {},
     }
 
+    # 버킷 4개는 시간대가 겹치므로(예: 18:00~23:30와 21:30~06:00), 버킷별 긍정/부정 건수를
+    # 그대로 더하면 중복 집계된다. 하루 전체 집계는 겹치지 않는 전체 posts에서 한 번만 센다.
+    day_pos = 0
+    day_neg = 0
+    for p in posts:
+        sentiment = classify_sentiment(p["title"])
+        if sentiment is None:
+            continue
+        if not any(kw in p["title"] for kw in TOPIC_KEYWORDS):
+            continue
+        if sentiment == "긍정":
+            day_pos += 1
+        else:
+            day_neg += 1
+    result["total"] = {"positive_posts": day_pos, "negative_posts": day_neg}
+
     for label, _, _ in WINDOWS:
         bucket_posts = [p for p in posts if label in bucket_for(p["ts"], window_start)]
         pos_counter = Counter()
@@ -214,12 +233,42 @@ def build_output(raw: dict) -> dict:
     return result
 
 
+def append_history(data: dict) -> None:
+    """일자별 긍정/부정 점유율을 sentiment_history.csv에 누적한다(같은 날짜 재실행 시 덮어씀)."""
+    pos = data["total"]["positive_posts"]
+    neg = data["total"]["negative_posts"]
+    classified = pos + neg
+    row = {
+        "date": data["target_date"],
+        "total_posts": data["total_posts_scanned"],
+        "positive_posts": pos,
+        "negative_posts": neg,
+        "positive_pct": round(pos / classified * 100, 2) if classified else 0.0,
+        "negative_pct": round(neg / classified * 100, 2) if classified else 0.0,
+        "generated_at": data["generated_at"],
+    }
+
+    rows = []
+    if os.path.exists(HISTORY_PATH):
+        with open(HISTORY_PATH, encoding="utf-8", newline="") as f:
+            rows = list(csv.DictReader(f))
+    rows = [r for r in rows if r["date"] != row["date"]]
+    rows.append(row)
+    rows.sort(key=lambda r: r["date"])
+
+    with open(HISTORY_PATH, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=HISTORY_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 if __name__ == "__main__":
     yesterday = (datetime.now(KST) - timedelta(days=1)).date()
     raw = load_or_scrape_raw(yesterday)
     data = build_output(raw)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    append_history(data)
     print(f"scanned {data['total_posts_scanned']} posts for {data['target_date']}")
     for label, b in data["buckets"].items():
         print(f"  {label}: total={b['total_posts']} pos={b['positive_posts']} neg={b['negative_posts']}")
