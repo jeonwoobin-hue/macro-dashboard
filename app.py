@@ -603,7 +603,12 @@ with tab_valuation:
 
 # ── 인간지표 (시장 심리) ──────────────────────────────────────
 with tab_sentiment:
-    st.subheader("국내주식 인간지표")
+    sentiment_header_col, sentiment_chart_col = st.columns([10, 1])
+    with sentiment_header_col:
+        st.subheader("국내주식 인간지표")
+    with sentiment_chart_col:
+        if st.button("📊", key="sentiment_history_trigger", help="일별 긍정/부정 점유율 추이 보기"):
+            show_sentiment_history_dialog()
     st.caption(
         "디시인사이드 국내주식 갤러리의 전날 게시글을 시간대 4구간으로 나눠, "
         "키워드 사전 기반으로 긍정/부정을 분류하고 구간별 점유율을 보여줍니다. "
@@ -633,13 +638,11 @@ with tab_sentiment:
         day_classified = day_pos + day_neg
         day_pos_pct = day_pos / day_classified * 100 if day_classified else 0.0
         day_neg_pct = day_neg / day_classified * 100 if day_classified else 0.0
-        day_summary_text = (
+        st.caption(
             f"수집 게시글 {sentiment_data['total_posts_scanned']:,}건, "
             f"긍정 분류 {day_pos}건({day_pos_pct:.2f}%), "
             f"부정 분류 {day_neg}건({day_neg_pct:.2f}%)"
         )
-        if st.button(day_summary_text, key="sentiment_history_trigger", type="tertiary"):
-            show_sentiment_history_dialog()
 
         bucket_labels = list(sentiment_data["buckets"].keys())
         bucket_tabs = st.tabs(bucket_labels)
