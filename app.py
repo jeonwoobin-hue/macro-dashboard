@@ -528,9 +528,13 @@ with tab_sentiment:
         for i, (label, bucket_tab) in enumerate(zip(bucket_labels, bucket_tabs)):
             bucket = sentiment_data["buckets"][label]
             with bucket_tab:
+                classified = bucket["positive_posts"] + bucket["negative_posts"]
+                pos_pct = bucket["positive_posts"] / classified * 100 if classified else 0.0
+                neg_pct = bucket["negative_posts"] / classified * 100 if classified else 0.0
                 st.caption(
                     f"수집 게시글 {bucket['total_posts']:,}건 · "
-                    f"긍정 분류 {bucket['positive_posts']}건 · 부정 분류 {bucket['negative_posts']}건"
+                    f"긍정 분류 {bucket['positive_posts']}건({pos_pct:.2f}%) · "
+                    f"부정 분류 {bucket['negative_posts']}건({neg_pct:.2f}%)"
                 )
                 kc1, kc2 = st.columns(2)
                 with kc1:
