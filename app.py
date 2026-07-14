@@ -479,13 +479,17 @@ with tab_rates:
         ("30Y", "DGS30"),
     ]
     # DGS2/DGS10은 이 탭 위쪽에서 이미 str(start_date)로 조회했으므로, 같은 인자로 호출해
-    # get_series 캐시를 그대로 재사용한다(중복 FRED 호출 방지 — 신규 호출은 9개로 줄어듦).
+    # get_series 캐시를 재사용한다(중복 FRED 호출 방지). 나머지 9개는 곡선에 필요한 최근
+    # 1년치만 있으면 되므로, 사이드바 시작일(보통 2018~)까지 통째로 당겨오지 않고 짧은
+    # 창으로 제한해 메모리 사용량을 늘리지 않는다.
+    yield_start = (pd.Timestamp.today() - pd.Timedelta(days=450)).strftime("%Y-%m-%d")
     one_year_ago = pd.Timestamp.today() - pd.Timedelta(days=365)
 
     curve_rows = []
     latest_curve_date = None
     for label, series_id in YIELD_MATURITIES:
-        s = get_series(series_id, str(start_date), api_key).dropna(subset=["value"])
+        fetch_start = str(start_date) if series_id in ("DGS2", "DGS10") else yield_start
+        s = get_series(series_id, fetch_start, api_key).dropna(subset=["value"])
         if s.empty:
             continue
         latest_row = s.iloc[-1]
