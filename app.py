@@ -478,13 +478,14 @@ with tab_rates:
         ("20Y", "DGS20"),
         ("30Y", "DGS30"),
     ]
-    yield_start = (pd.Timestamp.today() - pd.Timedelta(days=450)).strftime("%Y-%m-%d")
+    # DGS2/DGS10은 이 탭 위쪽에서 이미 str(start_date)로 조회했으므로, 같은 인자로 호출해
+    # get_series 캐시를 그대로 재사용한다(중복 FRED 호출 방지 — 신규 호출은 9개로 줄어듦).
     one_year_ago = pd.Timestamp.today() - pd.Timedelta(days=365)
 
     curve_rows = []
     latest_curve_date = None
     for label, series_id in YIELD_MATURITIES:
-        s = get_series(series_id, yield_start, api_key).dropna(subset=["value"])
+        s = get_series(series_id, str(start_date), api_key).dropna(subset=["value"])
         if s.empty:
             continue
         latest_row = s.iloc[-1]
