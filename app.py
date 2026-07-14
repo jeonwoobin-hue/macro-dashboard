@@ -141,34 +141,6 @@ def show_latest_metric(df: pd.DataFrame, col: str, label: str, suffix: str = "%"
     )
 
 
-@st.dialog("국내주식 인간지표 — 일별 긍정/부정 점유율 추이")
-def show_sentiment_history_dialog():
-    try:
-        history_df = pd.read_csv("sentiment_history.csv", parse_dates=["date"]).sort_values("date")
-    except FileNotFoundError:
-        history_df = pd.DataFrame()
-    if history_df.empty:
-        st.info("아직 누적된 히스토리 데이터가 없습니다. 매일 자동 수집이 쌓이면 여기에 표시됩니다.")
-        return
-    st.caption(f"데이터 수집 시작: {history_df['date'].min().strftime('%Y-%m-%d')}부터 · 총 {len(history_df)}일치")
-    long_hist = history_df.melt(
-        id_vars="date", value_vars=["positive_pct", "negative_pct"], var_name="구분", value_name="점유율(%)"
-    )
-    long_hist["구분"] = long_hist["구분"].map({"positive_pct": "긍정", "negative_pct": "부정"})
-    st.altair_chart(
-        zoom_chart(
-            long_hist,
-            x="date",
-            y="점유율(%)",
-            color="구분",
-            color_domain=["긍정", "부정"],
-            color_range=["#54A24B", "#E45756"],
-            y_title="점유율(%)",
-        ),
-        width="stretch",
-    )
-
-
 tab_market, tab_inflation, tab_labor, tab_growth_fed, tab_rates, tab_valuation, tab_sentiment, tab_news = st.tabs(
     ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "📰 뉴스"]
 )
@@ -603,14 +575,9 @@ with tab_valuation:
 
 # ── 인간지표 (시장 심리) ──────────────────────────────────────
 with tab_sentiment:
-    sentiment_header_col, sentiment_chart_col = st.columns([10, 1])
-    with sentiment_header_col:
-        st.subheader("국내주식 인간지표")
-    with sentiment_chart_col:
-        if st.button("📊", key="sentiment_history_trigger", help="일별 긍정/부정 점유율 추이 보기"):
-            show_sentiment_history_dialog()
+    st.subheader("국내주식 인간지표")
     st.caption(
-        "디시인사이드 국내주식 갤러리의 전날 게시글을 시간대 4구간으로 나눠, "
+        "국내 주식 커뮤니티의 전날 게시글을 시간대 4구간으로 나눠, "
         "키워드 사전 기반으로 긍정/부정을 분류하고 구간별 점유율을 보여줍니다. "
         "AI 감성분석이 아닌 단순 키워드 매칭 휴리스틱이므로 참고용으로만 활용하세요."
     )
