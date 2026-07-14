@@ -29,11 +29,13 @@ def make_png(keywords: list[dict], colormap: str, path: str) -> bool:
         return False
     wc = WordCloud(
         font_path=KOREAN_FONT_PATH,
-        width=600,
-        height=400,
+        width=800,
+        height=500,
         background_color="white",
         colormap=colormap,
         prefer_horizontal=0.9,
+        max_words=20,
+        min_font_size=8,
     ).generate_from_frequencies(freqs)
     wc.to_file(path)
     return True

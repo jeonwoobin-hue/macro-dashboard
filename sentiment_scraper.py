@@ -18,9 +18,9 @@ KST = ZoneInfo("Asia/Seoul")
 LIST_URL = "https://gall.dcinside.com/mgallery/board/lists/"
 GALLERY_ID = "krstock"
 
-MAX_PAGES = 600
+MAX_PAGES = 1500
 REQUEST_DELAY = 0.15
-TIME_BUDGET_SEC = 480  # 안전장치: 최대 8분
+TIME_BUDGET_SEC = 1200  # 안전장치: 최대 20분. 21시간 구간을 다 훑으려면 8분/600페이지로는 부족해서 상향.
 
 RAW_CACHE_PATH = "sentiment_raw_posts.json"
 OUTPUT_PATH = "sentiment_data.json"
@@ -75,7 +75,11 @@ def parse_posts(html: str) -> list[dict]:
     soup = BeautifulSoup(html, "lxml")
     posts = []
     for tr in soup.select("tr.ub-content"):
-        if tr.get("data-type") == "icon_notice":
+        data_type = tr.get("data-type") or ""
+        # icon_notice: 공지, icon_recomimg/icon_recomtxt 등 "recom"이 포함된 타입: 인기글을
+        # 원래 작성 시각 그대로 목록 중간에 재노출하는 행. 실제 작성일과 무관하게 끼어들어
+        # (예: 2026-04 글이 7월 목록에 노출) 최솟값 기반 window_start 판정을 망가뜨리므로 제외.
+        if data_type == "icon_notice" or "recom" in data_type:
             continue
         tit = tr.select_one("td.gall_tit a")
         date_el = tr.select_one("td.gall_date")
@@ -196,7 +200,7 @@ def build_output(raw: dict) -> dict:
                 return []
             return [
                 {"keyword": kw, "count": cnt, "pct": round(cnt / total * 100, 1)}
-                for kw, cnt in counter.most_common(15)
+                for kw, cnt in counter.most_common(20)
             ]
 
         result["buckets"][label] = {
