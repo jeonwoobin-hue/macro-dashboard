@@ -151,12 +151,12 @@ with tab_market:
         c1, c2, c3, c4 = st.columns(4)
 
         market_indices = [
-            (c1, "^KS11", "KOSPI", "한국 대표 증시 지수. 국내 대형주 중심."),
-            (c2, "^KQ11", "KOSDAQ", "한국 성장·중소형주 중심 지수. 코스피 대비 변동성이 큼."),
-            (c3, "^IXIC", "Nasdaq", "미국 기술주 중심 지수. 성장주·금리 민감도가 높음."),
-            (c4, "^DJI", "Dow Jones", "미국 대형 우량주 30종목 지수. 경기민감·전통산업 비중이 큼."),
+            (c1, "^KS11", "KOSPI", "한국 대표 증시 지수. 국내 대형주 중심.", "https://m.stock.naver.com/domestic/index/KOSPI/discussion"),
+            (c2, "^KQ11", "KOSDAQ", "한국 성장·중소형주 중심 지수. 코스피 대비 변동성이 큼.", "https://m.stock.naver.com/domestic/index/KOSDAQ/discussion"),
+            (c3, "^IXIC", "Nasdaq", "미국 기술주 중심 지수. 성장주·금리 민감도가 높음.", "https://m.stock.naver.com/worldstock/index/.IXIC/discussion"),
+            (c4, "^DJI", "Dow Jones", "미국 대형 우량주 30종목 지수. 경기민감·전통산업 비중이 큼.", None),
         ]
-        for col, symbol, name, desc in market_indices:
+        for col, symbol, name, desc, discussion_url in market_indices:
             with col:
                 st.subheader(name)
                 st.caption(desc)
@@ -164,11 +164,16 @@ with tab_market:
                 latest = df.iloc[-1]
                 prev = df.iloc[-2]
                 chg_pct = (latest["close"] - prev["close"]) / prev["close"] * 100
-                st.metric(
-                    f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
-                    f"{latest['close']:,.2f}",
-                    delta=f"{chg_pct:+.2f}%",
-                )
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    st.metric(
+                        f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
+                        f"{latest['close']:,.2f}",
+                        delta=f"{chg_pct:+.2f}%",
+                    )
+                if discussion_url:
+                    with mc2:
+                        st.link_button("🔥 Hot 토픽", discussion_url, width="stretch")
                 st.altair_chart(zoom_chart(df, x="date", y="close", y_title="종가"), width="stretch")
 
 # ── 물가 ────────────────────────────────────────────────────
