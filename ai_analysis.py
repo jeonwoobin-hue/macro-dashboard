@@ -8,12 +8,15 @@ Gemini API로 경제지표 해석(지표 분석·거시적 해석·정책적 함
 """
 import json
 import os
+import time
 
 import requests
 
 GEMINI_MODEL = "gemini-flash-latest"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 CACHE_PATH = "ai_analysis_cache.json"
+MAX_RETRIES = 2
+RETRY_STATUS_CODES = {429, 500, 503}
 
 PROMPT_TEMPLATE = """당신은 거시경제 전문 애널리스트입니다. 아래 경제지표 발표 내용을 참고해
 주식 투자자 관점에서 짧고 명확하게 해석해주세요.
@@ -43,13 +46,28 @@ def _save_cache(cache: dict) -> None:
 
 
 def _call_gemini(prompt: str, api_key: str) -> dict:
-    resp = requests.post(
-        GEMINI_URL,
-        params={"key": api_key},
-        json={"contents": [{"parts": [{"text": prompt}]}]},
-        timeout=30,
-    )
-    resp.raise_for_status()
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            resp = requests.post(
+                GEMINI_URL,
+                params={"key": api_key},
+                json={"contents": [{"parts": [{"text": prompt}]}]},
+                timeout=30,
+            )
+        except requests.exceptions.RequestException:
+            # 네트워크 예외 메시지에도 api_key가 포함된 URL이 그대로 들어있을 수 있어 감춘다.
+            if attempt < MAX_RETRIES:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise requests.HTTPError("Gemini API 요청 실패 (네트워크 오류)") from None
+        if resp.status_code == 200:
+            break
+        if resp.status_code in RETRY_STATUS_CODES and attempt < MAX_RETRIES:
+            time.sleep(1.5 * (attempt + 1))
+            continue
+        # 원본 예외 메시지에는 api_key가 포함된 URL이 그대로 들어있어 화면에 노출될 수 있으므로 감춘다.
+        raise requests.HTTPError(f"Gemini API 요청 실패 (status {resp.status_code})") from None
+
     text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
     if text.startswith("```"):
         text = text.strip("`")
