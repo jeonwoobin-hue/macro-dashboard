@@ -217,11 +217,14 @@ with tab_inflation:
             st.subheader("Core CPI (MoM)")
             st.caption("에너지·식품을 제외한 소비자물가지수의 전월 대비 변화율. 연준의 근원 인플레이션 판단 지표.")
             df = get_series("CPILFESL", str(start_date), api_key)
-            show_latest_metric(df, "MoM%", "최근 발표 MoM")
             cpi_latest_date = df.dropna(subset=["MoM%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            analysis_button(
-                "cpi", "Core CPI (MoM)", series_context(df, "MoM%", "Core CPI MoM", suffix="%"), cpi_latest_date
-            )
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                show_latest_metric(df, "MoM%", "최근 발표 MoM")
+            with mc2:
+                analysis_button(
+                    "cpi", "Core CPI (MoM)", series_context(df, "MoM%", "Core CPI MoM", suffix="%"), cpi_latest_date
+                )
             st.altair_chart(
                 zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)", rule_y=0.2, rule_label="연준 목표"),
                 width="stretch",
@@ -231,11 +234,14 @@ with tab_inflation:
             st.subheader("Core PCE (MoM)")
             st.caption("에너지·식품을 제외한 개인소비지출 물가지수 전월비. 연준이 공식 목표(2%)로 삼는 지표.")
             df = get_series("PCEPILFE", str(start_date), api_key)
-            show_latest_metric(df, "MoM%", "최근 발표 MoM")
             pce_latest_date = df.dropna(subset=["MoM%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            analysis_button(
-                "pce", "Core PCE (MoM)", series_context(df, "MoM%", "Core PCE MoM", suffix="%"), pce_latest_date
-            )
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                show_latest_metric(df, "MoM%", "최근 발표 MoM")
+            with mc2:
+                analysis_button(
+                    "pce", "Core PCE (MoM)", series_context(df, "MoM%", "Core PCE MoM", suffix="%"), pce_latest_date
+                )
             st.altair_chart(zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)"), width="stretch")
 
         with c3:
@@ -244,17 +250,20 @@ with tab_inflation:
             df = get_series("DCOILWTICO", str(start_date), api_key)
             latest = df.dropna(subset=["value"]).iloc[-1]
             prev = df.dropna(subset=["value"]).iloc[-2]
-            st.metric(
-                f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
-                f"${latest['value']:.2f}",
-                delta=f"{latest['value'] - prev['value']:+.2f}",
-            )
             # 가격 자체는 매일 갱신되지만, 해석은 주 1회(ISO 주차 기준)만 새로 생성한다.
             iso = latest["date"].isocalendar()
             wti_week_key = f"{iso.year}-W{iso.week:02d}"
-            analysis_button(
-                "wti", "WTI 유가", series_context(df, "value", "WTI 현물가", suffix="$", signed=False), wti_week_key
-            )
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                st.metric(
+                    f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
+                    f"${latest['value']:.2f}",
+                    delta=f"{latest['value'] - prev['value']:+.2f}",
+                )
+            with mc2:
+                analysis_button(
+                    "wti", "WTI 유가", series_context(df, "value", "WTI 현물가", suffix="$", signed=False), wti_week_key
+                )
             st.altair_chart(zoom_chart(df, x="date", y="value", y_title="$/배럴"), width="stretch")
 
         with c4:
@@ -264,7 +273,6 @@ with tab_inflation:
             df10y = get_series("T10YIE", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "10년 기대인플레이션"})
             bei_merged = pd.merge(df5, df10y, on="date", how="inner")
             latest = bei_merged.iloc[-1]
-            st.metric(f"5년 BEI ({latest['date'].strftime('%Y-%m-%d')})", f"{latest['5년 기대인플레이션']:.2f}%")
             # 기대인플레이션은 매일 갱신되는 시장 데이터지만, 해석은 CPI가 새로 발표될 때에 맞춰
             # 한 달에 한 번만 CPI/PCE와 같이 갱신한다(요청 사양).
             bei_context = (
@@ -272,7 +280,11 @@ with tab_inflation:
                 + "\n"
                 + series_context(bei_merged.rename(columns={"10년 기대인플레이션": "value"}), "value", "10년 기대인플레이션", suffix="%", signed=False)
             )
-            analysis_button("bei", "기대인플레이션 (BEI)", bei_context, cpi_latest_date)
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                st.metric(f"5년 BEI ({latest['date'].strftime('%Y-%m-%d')})", f"{latest['5년 기대인플레이션']:.2f}%")
+            with mc2:
+                analysis_button("bei", "기대인플레이션 (BEI)", bei_context, cpi_latest_date)
             bei_long = bei_merged.melt(id_vars="date", var_name="구분", value_name="값")
             st.altair_chart(
                 zoom_chart(
@@ -296,14 +308,17 @@ with tab_labor:
             st.subheader("비농업 고용")
             st.caption("비농업 부문 신규 고용자 수(전월 대비 증감, 천 명). 경기 모멘텀의 대표 선행 신호.")
             df = get_series("PAYEMS", str(start_date), api_key)
-            show_latest_metric(df, "MoM_chg", "전월 대비 증감", suffix="K")
             payrolls_latest_date = df.dropna(subset=["MoM_chg"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            analysis_button(
-                "payrolls",
-                "비농업 고용 (Nonfarm Payrolls)",
-                series_context(df, "MoM_chg", "비농업 고용 전월 대비 증감(천 명)", suffix="K"),
-                payrolls_latest_date,
-            )
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                show_latest_metric(df, "MoM_chg", "전월 대비 증감", suffix="K")
+            with mc2:
+                analysis_button(
+                    "payrolls",
+                    "비농업 고용 (Nonfarm Payrolls)",
+                    series_context(df, "MoM_chg", "비농업 고용 전월 대비 증감(천 명)", suffix="K"),
+                    payrolls_latest_date,
+                )
             st.altair_chart(
                 zoom_chart(df, x="date", y="MoM_chg", y_title="천 명", mark="bar"), width="stretch"
             )
@@ -312,22 +327,28 @@ with tab_labor:
             st.subheader("실업률")
             st.caption("경제활동인구 중 실업자 비율. 연준 이중책무(물가·고용) 중 고용 측면 판단 근거.")
             df = get_series("UNRATE", str(start_date), api_key)
-            show_latest_metric(df, "value", "최근 실업률")
             unrate_latest_date = df.dropna(subset=["value"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            analysis_button(
-                "unrate", "실업률", series_context(df, "value", "실업률(%)", suffix="%", signed=False), unrate_latest_date
-            )
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                show_latest_metric(df, "value", "최근 실업률")
+            with mc2:
+                analysis_button(
+                    "unrate", "실업률", series_context(df, "value", "실업률(%)", suffix="%", signed=False), unrate_latest_date
+                )
             st.altair_chart(zoom_chart(df, x="date", y="value", y_title="%"), width="stretch")
 
         with c3:
             st.subheader("평균시급 (YoY)")
             st.caption("시간당 평균 임금 전년 대비 상승률. 임금발 인플레이션 압력을 가늠하는 지표.")
             df = get_series("CES0500000003", str(start_date), api_key)
-            show_latest_metric(df, "YoY%", "최근 발표 YoY")
             wages_latest_date = df.dropna(subset=["YoY%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            analysis_button(
-                "wages", "평균시급 (YoY)", series_context(df, "YoY%", "평균시급 YoY", suffix="%"), wages_latest_date
-            )
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                show_latest_metric(df, "YoY%", "최근 발표 YoY")
+            with mc2:
+                analysis_button(
+                    "wages", "평균시급 (YoY)", series_context(df, "YoY%", "평균시급 YoY", suffix="%"), wages_latest_date
+                )
             st.altair_chart(zoom_chart(df, x="date", y="YoY%", y_title="YoY (%)"), width="stretch")
 
         with c4:
@@ -336,17 +357,20 @@ with tab_labor:
             df = get_series("ICSA", str(start_date), api_key)
             latest = df.dropna(subset=["value"]).iloc[-1]
             prev = df.dropna(subset=["value"]).iloc[-2]
-            st.metric(
-                f"최근 발표 ({latest['date'].strftime('%Y-%m-%d')})",
-                f"{latest['value']:,.0f}건",
-                delta=f"{latest['value'] - prev['value']:+,.0f}",
-            )
-            analysis_button(
-                "claims",
-                "신규 실업수당 청구건수",
-                series_context(df, "value", "신규 실업수당 청구건수", signed=False),
-                latest["date"].strftime("%Y-%m-%d"),
-            )
+            mc1, mc2 = st.columns([3, 1])
+            with mc1:
+                st.metric(
+                    f"최근 발표 ({latest['date'].strftime('%Y-%m-%d')})",
+                    f"{latest['value']:,.0f}건",
+                    delta=f"{latest['value'] - prev['value']:+,.0f}",
+                )
+            with mc2:
+                analysis_button(
+                    "claims",
+                    "신규 실업수당 청구건수",
+                    series_context(df, "value", "신규 실업수당 청구건수", signed=False),
+                    latest["date"].strftime("%Y-%m-%d"),
+                )
             st.altair_chart(zoom_chart(df, x="date", y="value", y_title="건"), width="stretch")
 
 # ── 경기·연준 (한국 경기종합지수 + 수동 입력 지표) ──────────
