@@ -192,21 +192,24 @@ with tab_market:
             with col:
                 st.subheader(name)
                 st.caption(desc)
-                df = get_yahoo_series(symbol, str(start_date), interval="1d")
-                latest = df.iloc[-1]
-                prev = df.iloc[-2]
-                chg_pct = (latest["close"] - prev["close"]) / prev["close"] * 100
-                mc1, mc2 = st.columns([3, 1])
-                with mc1:
-                    st.metric(
-                        f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
-                        f"{latest['close']:,.2f}",
-                        delta=f"{chg_pct:+.2f}%",
-                    )
-                if discussion_url:
-                    with mc2:
-                        st.link_button("🔥 Hot 토픽", discussion_url, width="stretch")
-                st.altair_chart(zoom_chart(df, x="date", y="close", y_title="종가"), width="stretch")
+                try:
+                    df = get_yahoo_series(symbol, str(start_date), interval="1d")
+                    latest = df.iloc[-1]
+                    prev = df.iloc[-2]
+                    chg_pct = (latest["close"] - prev["close"]) / prev["close"] * 100
+                    mc1, mc2 = st.columns([3, 1])
+                    with mc1:
+                        st.metric(
+                            f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
+                            f"{latest['close']:,.2f}",
+                            delta=f"{chg_pct:+.2f}%",
+                        )
+                    if discussion_url:
+                        with mc2:
+                            st.link_button("🔥 Hot 토픽", discussion_url, width="stretch")
+                    st.altair_chart(zoom_chart(df, x="date", y="close", y_title="종가"), width="stretch")
+                except Exception as e:  # noqa: BLE001
+                    st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 물가 ────────────────────────────────────────────────────
 with tab_inflation:
@@ -216,88 +219,102 @@ with tab_inflation:
         with c1:
             st.subheader("Core CPI (MoM)")
             st.caption("에너지·식품을 제외한 소비자물가지수의 전월 대비 변화율. 연준의 근원 인플레이션 판단 지표.")
-            df = get_series("CPILFESL", str(start_date), api_key)
-            cpi_latest_date = df.dropna(subset=["MoM%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                show_latest_metric(df, "MoM%", "최근 발표 MoM")
-            with mc2:
-                analysis_button(
-                    "cpi", "Core CPI (MoM)", series_context(df, "MoM%", "Core CPI MoM", suffix="%"), cpi_latest_date
+            cpi_latest_date = None
+            try:
+                df = get_series("CPILFESL", str(start_date), api_key)
+                cpi_latest_date = df.dropna(subset=["MoM%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    show_latest_metric(df, "MoM%", "최근 발표 MoM")
+                with mc2:
+                    analysis_button(
+                        "cpi", "Core CPI (MoM)", series_context(df, "MoM%", "Core CPI MoM", suffix="%"), cpi_latest_date
+                    )
+                st.altair_chart(
+                    zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)", rule_y=0.2, rule_label="연준 목표"),
+                    width="stretch",
                 )
-            st.altair_chart(
-                zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)", rule_y=0.2, rule_label="연준 목표"),
-                width="stretch",
-            )
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c2:
             st.subheader("Core PCE (MoM)")
             st.caption("에너지·식품을 제외한 개인소비지출 물가지수 전월비. 연준이 공식 목표(2%)로 삼는 지표.")
-            df = get_series("PCEPILFE", str(start_date), api_key)
-            pce_latest_date = df.dropna(subset=["MoM%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                show_latest_metric(df, "MoM%", "최근 발표 MoM")
-            with mc2:
-                analysis_button(
-                    "pce", "Core PCE (MoM)", series_context(df, "MoM%", "Core PCE MoM", suffix="%"), pce_latest_date
-                )
-            st.altair_chart(zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)"), width="stretch")
+            try:
+                df = get_series("PCEPILFE", str(start_date), api_key)
+                pce_latest_date = df.dropna(subset=["MoM%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    show_latest_metric(df, "MoM%", "최근 발표 MoM")
+                with mc2:
+                    analysis_button(
+                        "pce", "Core PCE (MoM)", series_context(df, "MoM%", "Core PCE MoM", suffix="%"), pce_latest_date
+                    )
+                st.altair_chart(zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)"), width="stretch")
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c3:
             st.subheader("WTI 유가")
             st.caption("서부텍사스산 원유 현물가($/배럴). 에너지 인플레이션과 에너지주 실적에 직결되는 선행 변수.")
-            df = get_series("DCOILWTICO", str(start_date), api_key)
-            latest = df.dropna(subset=["value"]).iloc[-1]
-            prev = df.dropna(subset=["value"]).iloc[-2]
-            # 가격 자체는 매일 갱신되지만, 해석은 주 1회(ISO 주차 기준)만 새로 생성한다.
-            iso = latest["date"].isocalendar()
-            wti_week_key = f"{iso.year}-W{iso.week:02d}"
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                st.metric(
-                    f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
-                    f"${latest['value']:.2f}",
-                    delta=f"{latest['value'] - prev['value']:+.2f}",
-                )
-            with mc2:
-                analysis_button(
-                    "wti", "WTI 유가", series_context(df, "value", "WTI 현물가", suffix="$", signed=False), wti_week_key
-                )
-            st.altair_chart(zoom_chart(df, x="date", y="value", y_title="$/배럴"), width="stretch")
+            try:
+                df = get_series("DCOILWTICO", str(start_date), api_key)
+                latest = df.dropna(subset=["value"]).iloc[-1]
+                prev = df.dropna(subset=["value"]).iloc[-2]
+                # 가격 자체는 매일 갱신되지만, 해석은 주 1회(ISO 주차 기준)만 새로 생성한다.
+                iso = latest["date"].isocalendar()
+                wti_week_key = f"{iso.year}-W{iso.week:02d}"
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    st.metric(
+                        f"최근 종가 ({latest['date'].strftime('%Y-%m-%d')})",
+                        f"${latest['value']:.2f}",
+                        delta=f"{latest['value'] - prev['value']:+.2f}",
+                    )
+                with mc2:
+                    analysis_button(
+                        "wti", "WTI 유가", series_context(df, "value", "WTI 현물가", suffix="$", signed=False), wti_week_key
+                    )
+                st.altair_chart(zoom_chart(df, x="date", y="value", y_title="$/배럴"), width="stretch")
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c4:
             st.subheader("기대인플레이션 (BEI)")
             st.caption("국채-물가연동국채(TIPS) 스프레드로 산출한 시장 기대인플레이션. 5년물·10년물 비교.")
-            df5 = get_series("T5YIE", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "5년 기대인플레이션"})
-            df10y = get_series("T10YIE", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "10년 기대인플레이션"})
-            bei_merged = pd.merge(df5, df10y, on="date", how="inner")
-            latest = bei_merged.iloc[-1]
-            # 기대인플레이션은 매일 갱신되는 시장 데이터지만, 해석은 CPI가 새로 발표될 때에 맞춰
-            # 한 달에 한 번만 CPI/PCE와 같이 갱신한다(요청 사양).
-            bei_context = (
-                series_context(bei_merged.rename(columns={"5년 기대인플레이션": "value"}), "value", "5년 기대인플레이션", suffix="%", signed=False)
-                + "\n"
-                + series_context(bei_merged.rename(columns={"10년 기대인플레이션": "value"}), "value", "10년 기대인플레이션", suffix="%", signed=False)
-            )
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                st.metric(f"5년 BEI ({latest['date'].strftime('%Y-%m-%d')})", f"{latest['5년 기대인플레이션']:.2f}%")
-            with mc2:
-                analysis_button("bei", "기대인플레이션 (BEI)", bei_context, cpi_latest_date)
-            bei_long = bei_merged.melt(id_vars="date", var_name="구분", value_name="값")
-            st.altair_chart(
-                zoom_chart(
-                    bei_long,
-                    x="date",
-                    y="값",
-                    color="구분",
-                    color_domain=["5년 기대인플레이션", "10년 기대인플레이션"],
-                    color_range=["#4C78A8", "#F58518"],
-                    y_title="%",
-                ),
-                width="stretch",
-            )
+            try:
+                df5 = get_series("T5YIE", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "5년 기대인플레이션"})
+                df10y = get_series("T10YIE", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "10년 기대인플레이션"})
+                bei_merged = pd.merge(df5, df10y, on="date", how="inner")
+                latest = bei_merged.iloc[-1]
+                # 기대인플레이션은 매일 갱신되는 시장 데이터지만, 해석은 CPI가 새로 발표될 때에 맞춰
+                # 한 달에 한 번만 CPI/PCE와 같이 갱신한다(요청 사양).
+                bei_context = (
+                    series_context(bei_merged.rename(columns={"5년 기대인플레이션": "value"}), "value", "5년 기대인플레이션", suffix="%", signed=False)
+                    + "\n"
+                    + series_context(bei_merged.rename(columns={"10년 기대인플레이션": "value"}), "value", "10년 기대인플레이션", suffix="%", signed=False)
+                )
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    st.metric(f"5년 BEI ({latest['date'].strftime('%Y-%m-%d')})", f"{latest['5년 기대인플레이션']:.2f}%")
+                with mc2:
+                    if cpi_latest_date:
+                        analysis_button("bei", "기대인플레이션 (BEI)", bei_context, cpi_latest_date)
+                bei_long = bei_merged.melt(id_vars="date", var_name="구분", value_name="값")
+                st.altair_chart(
+                    zoom_chart(
+                        bei_long,
+                        x="date",
+                        y="값",
+                        color="구분",
+                        color_domain=["5년 기대인플레이션", "10년 기대인플레이션"],
+                        color_range=["#4C78A8", "#F58518"],
+                        y_title="%",
+                    ),
+                    width="stretch",
+                )
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 고용 ────────────────────────────────────────────────────
 with tab_labor:
@@ -307,71 +324,83 @@ with tab_labor:
         with c1:
             st.subheader("비농업 고용")
             st.caption("비농업 부문 신규 고용자 수(전월 대비 증감, 천 명). 경기 모멘텀의 대표 선행 신호.")
-            df = get_series("PAYEMS", str(start_date), api_key)
-            payrolls_latest_date = df.dropna(subset=["MoM_chg"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                show_latest_metric(df, "MoM_chg", "전월 대비 증감", suffix="K")
-            with mc2:
-                analysis_button(
-                    "payrolls",
-                    "비농업 고용 (Nonfarm Payrolls)",
-                    series_context(df, "MoM_chg", "비농업 고용 전월 대비 증감(천 명)", suffix="K"),
-                    payrolls_latest_date,
+            try:
+                df = get_series("PAYEMS", str(start_date), api_key)
+                payrolls_latest_date = df.dropna(subset=["MoM_chg"]).iloc[-1]["date"].strftime("%Y-%m-%d")
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    show_latest_metric(df, "MoM_chg", "전월 대비 증감", suffix="K")
+                with mc2:
+                    analysis_button(
+                        "payrolls",
+                        "비농업 고용 (Nonfarm Payrolls)",
+                        series_context(df, "MoM_chg", "비농업 고용 전월 대비 증감(천 명)", suffix="K"),
+                        payrolls_latest_date,
+                    )
+                st.altair_chart(
+                    zoom_chart(df, x="date", y="MoM_chg", y_title="천 명", mark="bar"), width="stretch"
                 )
-            st.altair_chart(
-                zoom_chart(df, x="date", y="MoM_chg", y_title="천 명", mark="bar"), width="stretch"
-            )
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c2:
             st.subheader("실업률")
             st.caption("경제활동인구 중 실업자 비율. 연준 이중책무(물가·고용) 중 고용 측면 판단 근거.")
-            df = get_series("UNRATE", str(start_date), api_key)
-            unrate_latest_date = df.dropna(subset=["value"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                show_latest_metric(df, "value", "최근 실업률")
-            with mc2:
-                analysis_button(
-                    "unrate", "실업률", series_context(df, "value", "실업률(%)", suffix="%", signed=False), unrate_latest_date
-                )
-            st.altair_chart(zoom_chart(df, x="date", y="value", y_title="%"), width="stretch")
+            try:
+                df = get_series("UNRATE", str(start_date), api_key)
+                unrate_latest_date = df.dropna(subset=["value"]).iloc[-1]["date"].strftime("%Y-%m-%d")
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    show_latest_metric(df, "value", "최근 실업률")
+                with mc2:
+                    analysis_button(
+                        "unrate", "실업률", series_context(df, "value", "실업률(%)", suffix="%", signed=False), unrate_latest_date
+                    )
+                st.altair_chart(zoom_chart(df, x="date", y="value", y_title="%"), width="stretch")
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c3:
             st.subheader("평균시급 (YoY)")
             st.caption("시간당 평균 임금 전년 대비 상승률. 임금발 인플레이션 압력을 가늠하는 지표.")
-            df = get_series("CES0500000003", str(start_date), api_key)
-            wages_latest_date = df.dropna(subset=["YoY%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                show_latest_metric(df, "YoY%", "최근 발표 YoY")
-            with mc2:
-                analysis_button(
-                    "wages", "평균시급 (YoY)", series_context(df, "YoY%", "평균시급 YoY", suffix="%"), wages_latest_date
-                )
-            st.altair_chart(zoom_chart(df, x="date", y="YoY%", y_title="YoY (%)"), width="stretch")
+            try:
+                df = get_series("CES0500000003", str(start_date), api_key)
+                wages_latest_date = df.dropna(subset=["YoY%"]).iloc[-1]["date"].strftime("%Y-%m-%d")
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    show_latest_metric(df, "YoY%", "최근 발표 YoY")
+                with mc2:
+                    analysis_button(
+                        "wages", "평균시급 (YoY)", series_context(df, "YoY%", "평균시급 YoY", suffix="%"), wages_latest_date
+                    )
+                st.altair_chart(zoom_chart(df, x="date", y="YoY%", y_title="YoY (%)"), width="stretch")
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c4:
             st.subheader("신규 실업수당 청구건수")
             st.caption("매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표.")
-            df = get_series("ICSA", str(start_date), api_key)
-            latest = df.dropna(subset=["value"]).iloc[-1]
-            prev = df.dropna(subset=["value"]).iloc[-2]
-            mc1, mc2 = st.columns([3, 1])
-            with mc1:
-                st.metric(
-                    f"최근 발표 ({latest['date'].strftime('%Y-%m-%d')})",
-                    f"{latest['value']:,.0f}건",
-                    delta=f"{latest['value'] - prev['value']:+,.0f}",
-                )
-            with mc2:
-                analysis_button(
-                    "claims",
-                    "신규 실업수당 청구건수",
-                    series_context(df, "value", "신규 실업수당 청구건수", signed=False),
-                    latest["date"].strftime("%Y-%m-%d"),
-                )
-            st.altair_chart(zoom_chart(df, x="date", y="value", y_title="건"), width="stretch")
+            try:
+                df = get_series("ICSA", str(start_date), api_key)
+                latest = df.dropna(subset=["value"]).iloc[-1]
+                prev = df.dropna(subset=["value"]).iloc[-2]
+                mc1, mc2 = st.columns([3, 1])
+                with mc1:
+                    st.metric(
+                        f"최근 발표 ({latest['date'].strftime('%Y-%m-%d')})",
+                        f"{latest['value']:,.0f}건",
+                        delta=f"{latest['value'] - prev['value']:+,.0f}",
+                    )
+                with mc2:
+                    analysis_button(
+                        "claims",
+                        "신규 실업수당 청구건수",
+                        series_context(df, "value", "신규 실업수당 청구건수", signed=False),
+                        latest["date"].strftime("%Y-%m-%d"),
+                    )
+                st.altair_chart(zoom_chart(df, x="date", y="value", y_title="건"), width="stretch")
+            except Exception as e:  # noqa: BLE001
+                st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 경기·연준 (한국 경기종합지수 + 수동 입력 지표) ──────────
 with tab_growth_fed:
@@ -383,28 +412,31 @@ with tab_growth_fed:
     if not ecos_key:
         st.info("사이드바에 ECOS API Key를 입력하면 자동으로 표시됩니다. 무료 발급: https://ecos.bok.or.kr/api/")
     else:
-        start_ym = pd.to_datetime(start_date).strftime("%Y%m")
-        end_ym = pd.Timestamp.today().strftime("%Y%m")
-        leading = get_ecos_series(LEADING_INDEX_ITEM, ecos_key, start_ym, end_ym).rename(
-            columns={"value": "선행종합지수(순환변동치)"}
-        )
-        coincident = get_ecos_series(COINCIDENT_INDEX_ITEM, ecos_key, start_ym, end_ym).rename(
-            columns={"value": "동행종합지수(순환변동치)"}
-        )
-        merged_kr = pd.merge(leading, coincident, on="date", how="inner")
-        long_kr = merged_kr.melt(id_vars="date", var_name="구분", value_name="값")
-        st.altair_chart(
-            zoom_chart(
-                long_kr,
-                x="date",
-                y="값",
-                color="구분",
-                color_domain=["선행종합지수(순환변동치)", "동행종합지수(순환변동치)"],
-                color_range=["#F58518", "#4C78A8"],
-                y_title="지수(2020=100)",
-            ),
-            width="stretch",
-        )
+        try:
+            start_ym = pd.to_datetime(start_date).strftime("%Y%m")
+            end_ym = pd.Timestamp.today().strftime("%Y%m")
+            leading = get_ecos_series(LEADING_INDEX_ITEM, ecos_key, start_ym, end_ym).rename(
+                columns={"value": "선행종합지수(순환변동치)"}
+            )
+            coincident = get_ecos_series(COINCIDENT_INDEX_ITEM, ecos_key, start_ym, end_ym).rename(
+                columns={"value": "동행종합지수(순환변동치)"}
+            )
+            merged_kr = pd.merge(leading, coincident, on="date", how="inner")
+            long_kr = merged_kr.melt(id_vars="date", var_name="구분", value_name="값")
+            st.altair_chart(
+                zoom_chart(
+                    long_kr,
+                    x="date",
+                    y="값",
+                    color="구분",
+                    color_domain=["선행종합지수(순환변동치)", "동행종합지수(순환변동치)"],
+                    color_range=["#F58518", "#4C78A8"],
+                    y_title="지수(2020=100)",
+                ),
+                width="stretch",
+            )
+        except Exception as e:  # noqa: BLE001
+            st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
     st.divider()
 
@@ -479,54 +511,57 @@ with tab_rates:
         "10Y-2Y 스프레드가 역전(음수)되면 대표적인 경기침체 예고 신호로 해석됩니다."
     )
 
-    df2 = get_series("DGS2", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "2Y"})
-    df10 = get_series("DGS10", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "10Y"})
-    dff = get_series("DFEDTARU", str(start_date), api_key)[["date", "value"]].rename(
-        columns={"value": "Fed 정책금리(상단)"}
-    )
-    merged = pd.merge(df2, df10, on="date", how="inner")
-    merged["10Y-2Y 스프레드"] = merged["10Y"] - merged["2Y"]
-    merged = pd.merge(merged, dff, on="date", how="left")
-    merged["Fed 정책금리(상단)"] = merged["Fed 정책금리(상단)"].ffill()
+    try:
+        df2 = get_series("DGS2", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "2Y"})
+        df10 = get_series("DGS10", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "10Y"})
+        dff = get_series("DFEDTARU", str(start_date), api_key)[["date", "value"]].rename(
+            columns={"value": "Fed 정책금리(상단)"}
+        )
+        merged = pd.merge(df2, df10, on="date", how="inner")
+        merged["10Y-2Y 스프레드"] = merged["10Y"] - merged["2Y"]
+        merged = pd.merge(merged, dff, on="date", how="left")
+        merged["Fed 정책금리(상단)"] = merged["Fed 정책금리(상단)"].ffill()
 
-    c1, c2 = st.columns(2)
-    with c1:
-        latest = merged.iloc[-1]
-        prev = merged.iloc[-2]
-        latest_date = latest["date"].strftime("%Y-%m-%d")
-        for label, col in [("2년물", "2Y"), ("10년물", "10Y")]:
-            delta_abs = latest[col] - prev[col]
-            delta_pct = delta_abs / prev[col] * 100 if prev[col] else 0.0
-            st.metric(
-                f"{label} ({latest_date})",
-                f"{latest[col]:.2f}%",
-                delta=f"{delta_abs:+.3f}%p ({delta_pct:+.2f}%)",
-            )
-    with c2:
-        spread = latest["10Y-2Y 스프레드"]
-        st.metric("10Y-2Y 스프레드", f"{spread:+.2f}%p", delta="역전 중" if spread < 0 else "정상")
-        st.metric("Fed 정책금리(상단)", f"{latest['Fed 정책금리(상단)']:.2f}%")
+        c1, c2 = st.columns(2)
+        with c1:
+            latest = merged.iloc[-1]
+            prev = merged.iloc[-2]
+            latest_date = latest["date"].strftime("%Y-%m-%d")
+            for label, col in [("2년물", "2Y"), ("10년물", "10Y")]:
+                delta_abs = latest[col] - prev[col]
+                delta_pct = delta_abs / prev[col] * 100 if prev[col] else 0.0
+                st.metric(
+                    f"{label} ({latest_date})",
+                    f"{latest[col]:.2f}%",
+                    delta=f"{delta_abs:+.3f}%p ({delta_pct:+.2f}%)",
+                )
+        with c2:
+            spread = latest["10Y-2Y 스프레드"]
+            st.metric("10Y-2Y 스프레드", f"{spread:+.2f}%p", delta="역전 중" if spread < 0 else "정상")
+            st.metric("Fed 정책금리(상단)", f"{latest['Fed 정책금리(상단)']:.2f}%")
 
-    long_rates = merged.melt(
-        id_vars="date", value_vars=["2Y", "10Y", "Fed 정책금리(상단)"], var_name="구분", value_name="금리(%)"
-    ).dropna(subset=["금리(%)"])
-    st.altair_chart(
-        zoom_chart(
-            long_rates,
-            x="date",
-            y="금리(%)",
-            color="구분",
-            color_domain=["2Y", "10Y", "Fed 정책금리(상단)"],
-            color_range=["#4C78A8", "#54A24B", "#E45756"],
-            y_title="금리(%)",
-        ),
-        width="stretch",
-    )
-    st.markdown("**장단기금리차 (10Y-2Y 스프레드)**")
-    st.altair_chart(
-        zoom_chart(merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)"),
-        width="stretch",
-    )
+        long_rates = merged.melt(
+            id_vars="date", value_vars=["2Y", "10Y", "Fed 정책금리(상단)"], var_name="구분", value_name="금리(%)"
+        ).dropna(subset=["금리(%)"])
+        st.altair_chart(
+            zoom_chart(
+                long_rates,
+                x="date",
+                y="금리(%)",
+                color="구분",
+                color_domain=["2Y", "10Y", "Fed 정책금리(상단)"],
+                color_range=["#4C78A8", "#54A24B", "#E45756"],
+                y_title="금리(%)",
+            ),
+            width="stretch",
+        )
+        st.markdown("**장단기금리차 (10Y-2Y 스프레드)**")
+        st.altair_chart(
+            zoom_chart(merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)"),
+            width="stretch",
+        )
+    except Exception as e:  # noqa: BLE001
+        st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
     st.divider()
 
@@ -558,9 +593,14 @@ with tab_rates:
 
     curve_rows = []
     latest_curve_date = None
+    yield_curve_error = None
     for label, series_id in YIELD_MATURITIES:
         fetch_start = str(start_date) if series_id in ("DGS2", "DGS10") else yield_start
-        s = get_series(series_id, fetch_start, api_key).dropna(subset=["value"])
+        try:
+            s = get_series(series_id, fetch_start, api_key).dropna(subset=["value"])
+        except Exception as e:  # noqa: BLE001
+            yield_curve_error = e
+            continue
         if s.empty:
             continue
         latest_row = s.iloc[-1]
@@ -589,6 +629,8 @@ with tab_rates:
             ),
             width="stretch",
         )
+        if yield_curve_error:
+            st.caption(f"⚠️ 일부 만기는 불러오지 못해 곡선에서 제외됐습니다: {yield_curve_error}")
     else:
         st.info("수익률곡선 데이터를 불러오지 못했습니다.")
 
@@ -599,34 +641,37 @@ with tab_valuation:
         "PHLX 반도체지수(SOX)를 각 랠리 시작월 = 100으로 지수화해 상승폭을 직접 비교합니다. "
         "닷컴버블(1995~2002)과 현재 AI·반도체 랠리(2019~)의 궤적을 겹쳐서 과열 정도를 가늠해볼 수 있습니다."
     )
-    sox = get_yahoo_series("^SOX", "1994-01-01")
+    try:
+        sox = get_yahoo_series("^SOX", "1994-01-01")
 
-    def indexed_window(df: pd.DataFrame, start: str, months: int, label: str) -> pd.DataFrame:
-        window = df[df["date"] >= pd.to_datetime(start)].head(months).copy()
-        if window.empty:
+        def indexed_window(df: pd.DataFrame, start: str, months: int, label: str) -> pd.DataFrame:
+            window = df[df["date"] >= pd.to_datetime(start)].head(months).copy()
+            if window.empty:
+                return window
+            window["months_since_start"] = range(len(window))
+            window["지수화(시작월=100)"] = window["close"] / window["close"].iloc[0] * 100
+            window["구간"] = label
             return window
-        window["months_since_start"] = range(len(window))
-        window["지수화(시작월=100)"] = window["close"] / window["close"].iloc[0] * 100
-        window["구간"] = label
-        return window
 
-    dotcom = indexed_window(sox, "1995-01-01", 96, "닷컴버블(1995~2002)")
-    current_rally = indexed_window(sox, "2019-01-01", 96, "AI·반도체 랠리(2019~)")
-    combo = pd.concat([dotcom, current_rally], ignore_index=True)
+        dotcom = indexed_window(sox, "1995-01-01", 96, "닷컴버블(1995~2002)")
+        current_rally = indexed_window(sox, "2019-01-01", 96, "AI·반도체 랠리(2019~)")
+        combo = pd.concat([dotcom, current_rally], ignore_index=True)
 
-    st.altair_chart(
-        zoom_chart(
-            combo,
-            x="months_since_start",
-            y="지수화(시작월=100)",
-            color="구간",
-            color_domain=["닷컴버블(1995~2002)", "AI·반도체 랠리(2019~)"],
-            color_range=["#B279A2", "#E45756"],
-            y_title="지수화(시작월=100)",
-            x_type="Q",
-        ),
-        width="stretch",
-    )
+        st.altair_chart(
+            zoom_chart(
+                combo,
+                x="months_since_start",
+                y="지수화(시작월=100)",
+                color="구간",
+                color_domain=["닷컴버블(1995~2002)", "AI·반도체 랠리(2019~)"],
+                color_range=["#B279A2", "#E45756"],
+                y_title="지수화(시작월=100)",
+                x_type="Q",
+            ),
+            width="stretch",
+        )
+    except Exception as e:  # noqa: BLE001
+        st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
     st.divider()
 
@@ -658,19 +703,22 @@ with tab_valuation:
         "FRED에서 Wilshire5000 시가총액 지수가 단종되어 S&P500으로 대체 산출했으며, "
         "절대 수치가 아닌 자체 장기평균 대비 상대적 고평가/저평가 판단용으로만 참고하세요."
     )
-    sp500 = get_yahoo_series("^GSPC", "1985-01-01")
-    gdp = get_series("GDP", "1985-01-01", api_key)[["date", "value"]].rename(columns={"value": "gdp"})
-    gdp_monthly = gdp.set_index("date").resample("MS").ffill().reset_index()
-    buffett = pd.merge_asof(sp500.sort_values("date"), gdp_monthly.sort_values("date"), on="date", direction="backward")
-    buffett = buffett.dropna(subset=["gdp"])
-    buffett["ratio"] = buffett["close"] / buffett["gdp"]
-    buffett["지수화"] = buffett["ratio"] / buffett["ratio"].mean() * 100
-    buffett_view = buffett[buffett["date"] >= pd.to_datetime(start_date)]
-    if not buffett_view.empty:
-        st.metric("최근 버핏지수(장기평균=100)", f"{buffett_view.iloc[-1]['지수화']:.0f}")
-        st.altair_chart(
-            zoom_chart(buffett_view, x="date", y="지수화", y_title="버핏지수(장기평균=100)"), width="stretch"
-        )
+    try:
+        sp500 = get_yahoo_series("^GSPC", "1985-01-01")
+        gdp = get_series("GDP", "1985-01-01", api_key)[["date", "value"]].rename(columns={"value": "gdp"})
+        gdp_monthly = gdp.set_index("date").resample("MS").ffill().reset_index()
+        buffett = pd.merge_asof(sp500.sort_values("date"), gdp_monthly.sort_values("date"), on="date", direction="backward")
+        buffett = buffett.dropna(subset=["gdp"])
+        buffett["ratio"] = buffett["close"] / buffett["gdp"]
+        buffett["지수화"] = buffett["ratio"] / buffett["ratio"].mean() * 100
+        buffett_view = buffett[buffett["date"] >= pd.to_datetime(start_date)]
+        if not buffett_view.empty:
+            st.metric("최근 버핏지수(장기평균=100)", f"{buffett_view.iloc[-1]['지수화']:.0f}")
+            st.altair_chart(
+                zoom_chart(buffett_view, x="date", y="지수화", y_title="버핏지수(장기평균=100)"), width="stretch"
+            )
+    except Exception as e:  # noqa: BLE001
+        st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 인간지표 (시장 심리) ──────────────────────────────────────
 with tab_sentiment:
@@ -746,13 +794,16 @@ with tab_sentiment:
         "S&P500 옵션 내재변동성으로 산출하는 CBOE 변동성지수. 20 이하는 안정, 30 이상은 공포 국면으로 흔히 해석됩니다. "
         "가장 널리 쓰이는 정량적 시장심리 지표입니다."
     )
-    vix = get_series("VIXCLS", str(start_date), api_key)
-    latest_vix = vix.dropna(subset=["value"]).iloc[-1]
-    st.metric(f"최근 VIX ({latest_vix['date'].strftime('%Y-%m-%d')})", f"{latest_vix['value']:.2f}")
-    st.altair_chart(
-        zoom_chart(vix, x="date", y="value", y_title="VIX", rule_y=20, rule_label="안정/공포 기준선(20)"),
-        width="stretch",
-    )
+    try:
+        vix = get_series("VIXCLS", str(start_date), api_key)
+        latest_vix = vix.dropna(subset=["value"]).iloc[-1]
+        st.metric(f"최근 VIX ({latest_vix['date'].strftime('%Y-%m-%d')})", f"{latest_vix['value']:.2f}")
+        st.altair_chart(
+            zoom_chart(vix, x="date", y="value", y_title="VIX", rule_y=20, rule_label="안정/공포 기준선(20)"),
+            width="stretch",
+        )
+    except Exception as e:  # noqa: BLE001
+        st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
     st.divider()
 
@@ -761,10 +812,13 @@ with tab_sentiment:
         "ICE BofA MOVE Index. 미국 국채 옵션 내재변동성으로 산출하는 채권시장 버전 VIX입니다. "
         "값이 높을수록 금리·채권시장의 불안심리가 크다는 의미입니다."
     )
-    move = get_yahoo_series("^MOVE", str(start_date), interval="1d")
-    latest_move = move.iloc[-1]
-    st.metric(f"최근 MOVE ({latest_move['date'].strftime('%Y-%m-%d')})", f"{latest_move['close']:.1f}")
-    st.altair_chart(zoom_chart(move, x="date", y="close", y_title="MOVE"), width="stretch")
+    try:
+        move = get_yahoo_series("^MOVE", str(start_date), interval="1d")
+        latest_move = move.iloc[-1]
+        st.metric(f"최근 MOVE ({latest_move['date'].strftime('%Y-%m-%d')})", f"{latest_move['close']:.1f}")
+        st.altair_chart(zoom_chart(move, x="date", y="close", y_title="MOVE"), width="stretch")
+    except Exception as e:  # noqa: BLE001
+        st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 뉴스 ────────────────────────────────────────────────────
 with tab_news:
