@@ -1,5 +1,6 @@
 import altair as alt
 import pandas as pd
+import streamlit as st
 
 
 def zoom_chart(
@@ -50,3 +51,47 @@ def zoom_chart(
     # 사용하므로, 과거에 있었던 "초기 미선택 상태에서 축이 틀어지는" 문제가 없다.
     zoom = alt.selection_interval(bind="scales", encodings=["x"])
     return chart.add_params(zoom)
+
+
+# Vega-Lite의 bind="scales" 확대는 마우스 휠 이벤트만 지원하고(공식 문서 확인됨) 터치
+# 핀치 제스처는 지원하지 않는다. 모바일에서도 확실히 동작하는 대안으로, "최신 데이터
+# 기준 표시 구간"을 좁히는 버튼(➕/➖)을 제공한다.
+ZOOM_LEVELS = [1.0, 0.5, 0.25, 0.1]  # 전체 → 50% → 25% → 10%, 항상 최신 쪽을 기준으로 좁힘
+
+
+def _zoom_state_key(key: str) -> str:
+    return f"_zoom_lvl_{key}"
+
+
+def zoom_buttons(key: str) -> float:
+    """➕/➖ 버튼으로 표시 구간 배율을 조절하고, 현재 배율(1.0=전체)을 반환한다."""
+    state_key = _zoom_state_key(key)
+    idx = st.session_state.get(state_key, 0)
+
+    b1, b2, _ = st.columns([1, 1, 6])
+    with b1:
+        if st.button("➕", key=f"{key}_zin", help="최근 구간 확대", disabled=idx == len(ZOOM_LEVELS) - 1):
+            idx = min(idx + 1, len(ZOOM_LEVELS) - 1)
+            st.session_state[state_key] = idx
+    with b2:
+        if st.button("➖", key=f"{key}_zout", help="축소(전체 기간)", disabled=idx == 0):
+            idx = max(idx - 1, 0)
+            st.session_state[state_key] = idx
+
+    return ZOOM_LEVELS[idx]
+
+
+def _apply_zoom_window(data: pd.DataFrame, x: str, fraction: float) -> pd.DataFrame:
+    if fraction >= 1.0 or data.empty:
+        return data
+    x_max, x_min = data[x].max(), data[x].min()
+    cutoff = x_max - (x_max - x_min) * fraction
+    windowed = data[data[x] >= cutoff]
+    return windowed if len(windowed) >= 2 else data
+
+
+def render_zoomable_chart(data: pd.DataFrame, x: str, y: str, key: str, **kwargs):
+    """zoom_chart()를 ➕/➖ 확대·축소 버튼과 함께 렌더링한다(시간축 전용)."""
+    fraction = zoom_buttons(key)
+    windowed = _apply_zoom_window(data, x, fraction)
+    st.altair_chart(zoom_chart(windowed, x=x, y=y, **kwargs), width="stretch")

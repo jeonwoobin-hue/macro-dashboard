@@ -35,11 +35,20 @@ jobs:
       - name: Generate wordcloud images
         run: python wordcloud_gen.py
 
+      - name: Generate AI 해석 cache (지표가 새로 발표된 경우에만 Gemini 호출)
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python generate_ai_analysis.py
+        # Gemini 무료 티어 429 등으로 실패해도 감성데이터 커밋(더 중요한 일간 갱신)까지
+        # 막지는 않는다. 실패하면 다음 실행 때 재시도된다.
+        continue-on-error: true
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add sentiment_data.json sentiment_history.csv wordclouds/
+          git add sentiment_data.json sentiment_history.csv wordclouds/ ai_analysis_cache.json
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else

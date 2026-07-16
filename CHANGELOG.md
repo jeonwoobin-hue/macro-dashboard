@@ -60,3 +60,7 @@
 - feat: 데이터 캐시 TTL을 6시간→24시간으로 확대(FRED/ECOS/뉴스는 대부분 월1회·주1회 발표라 하루 한 번 확인이면 충분)
 - feat: 시장 탭(KOSPI/KOSDAQ/Nasdaq/Dow) 전용 `market_cache_bucket()` 추가 — 장중엔 1시간 단위, 장마감·휴장 중엔 마지막 종가로 캐시 고정(요일+로컬 거래시간대 기준 근사치, 공휴일 캘린더는 미사용)
 - docs: MEMORY.md 배포 트러블슈팅 섹션에 다섯 번째 세그폴트 재발 및 조치 내역 기록
+- feat: 시장 탭 Dow Jones에도 Hot 토픽 버튼 추가
+- feat: 모바일에서 안 되는 Vega-Lite 핀치줌(라이브러리 자체 미지원, 공식 문서로 확인) 대신 모든 시간축 차트에 ➕/➖ 확대·축소 버튼 추가(charts.py `render_zoomable_chart`)
+- style: 물가·고용탭 "🔍 해석" 버튼을 "🔍 AI해석"으로 변경
+- feat: AI 해석 결과를 GitHub Actions로 미리 생성해 커밋하는 `generate_ai_analysis.py` 추가 — 배포 컨테이너 재시작마다 초기화되던 `ai_analysis_cache.json`을 이제 git으로 버전관리해 재배포 후에도 유지, 지표가 실제로 새로 발표됐을 때만 Gemini 호출(그 외엔 버튼 클릭 시 즉시 캐시된 텍스트 표시)

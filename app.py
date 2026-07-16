@@ -8,7 +8,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from ai_analysis import get_indicator_analysis
-from charts import zoom_chart
+from charts import render_zoomable_chart, zoom_chart
 from ecos_client import COINCIDENT_INDEX_ITEM, LEADING_INDEX_ITEM, fetch_ecos_monthly
 from fred_client import add_change_columns, fetch_fred_series
 from market_data import fetch_yahoo_series
@@ -202,7 +202,7 @@ def show_analysis_dialog(title: str, indicator_key: str, name: str, context: str
 
 
 def analysis_button(indicator_key: str, title: str, context: str, cache_key: str):
-    if st.button("🔍 해석", key=f"analysis_{indicator_key}", width="stretch"):
+    if st.button("🔍 AI해석", key=f"analysis_{indicator_key}", width="stretch"):
         show_analysis_dialog(title, indicator_key, title, context, cache_key)
 
 
@@ -231,7 +231,7 @@ if active_tab == "📈 시장":
             (c1, "^KS11", "KOSPI", "한국 대표 증시 지수. 국내 대형주 중심.", "https://m.stock.naver.com/domestic/index/KOSPI/discussion"),
             (c2, "^KQ11", "KOSDAQ", "한국 성장·중소형주 중심 지수. 코스피 대비 변동성이 큼.", "https://m.stock.naver.com/domestic/index/KOSDAQ/discussion"),
             (c3, "^IXIC", "NASDAQ", "미국 기술주 중심 지수. 성장주·금리 민감도가 높음.", "https://m.stock.naver.com/worldstock/index/.IXIC/discussion"),
-            (c4, "^DJI", "Dow Jones", "미국 대형 우량주 30종목 지수. 경기민감·전통산업 비중이 큼.", None),
+            (c4, "^DJI", "Dow Jones", "미국 대형 우량주 30종목 지수. 경기민감·전통산업 비중이 큼.", "https://m.stock.naver.com/worldstock/index/.DJI/discussion"),
         ]
         for col, symbol, name, desc, discussion_url in market_indices:
             with col:
@@ -254,7 +254,7 @@ if active_tab == "📈 시장":
                     if discussion_url:
                         with mc2:
                             st.link_button("🔥 Hot 토픽", discussion_url, width="stretch")
-                    st.altair_chart(zoom_chart(df, x="date", y="close", y_title="종가"), width="stretch")
+                    render_zoomable_chart(df, x="date", y="close", y_title="종가", key=f"market_{symbol}")
                 except Exception as e:  # noqa: BLE001
                     st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -277,9 +277,8 @@ if active_tab == "🐟 물가":
                     analysis_button(
                         "cpi", "Core CPI (MoM)", series_context(df, "MoM%", "Core CPI MoM", suffix="%"), cpi_latest_date
                     )
-                st.altair_chart(
-                    zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)", rule_y=0.2, rule_label="연준 목표"),
-                    width="stretch",
+                render_zoomable_chart(
+                    df, x="date", y="MoM%", y_title="MoM (%)", rule_y=0.2, rule_label="연준 목표", key="cpi"
                 )
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
@@ -297,7 +296,7 @@ if active_tab == "🐟 물가":
                     analysis_button(
                         "pce", "Core PCE (MoM)", series_context(df, "MoM%", "Core PCE MoM", suffix="%"), pce_latest_date
                     )
-                st.altair_chart(zoom_chart(df, x="date", y="MoM%", y_title="MoM (%)"), width="stretch")
+                render_zoomable_chart(df, x="date", y="MoM%", y_title="MoM (%)", key="pce")
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -322,7 +321,7 @@ if active_tab == "🐟 물가":
                     analysis_button(
                         "wti", "WTI 유가", series_context(df, "value", "WTI 현물가", suffix="$", signed=False), wti_week_key
                     )
-                st.altair_chart(zoom_chart(df, x="date", y="value", y_title="$/배럴"), width="stretch")
+                render_zoomable_chart(df, x="date", y="value", y_title="$/배럴", key="wti")
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -348,17 +347,15 @@ if active_tab == "🐟 물가":
                     if cpi_latest_date:
                         analysis_button("bei", "기대인플레이션 (BEI)", bei_context, cpi_latest_date)
                 bei_long = bei_merged.melt(id_vars="date", var_name="구분", value_name="값")
-                st.altair_chart(
-                    zoom_chart(
-                        bei_long,
-                        x="date",
-                        y="값",
-                        color="구분",
-                        color_domain=["5년 기대인플레이션", "10년 기대인플레이션"],
-                        color_range=["#4C78A8", "#F58518"],
-                        y_title="%",
-                    ),
-                    width="stretch",
+                render_zoomable_chart(
+                    bei_long,
+                    x="date",
+                    y="값",
+                    color="구분",
+                    color_domain=["5년 기대인플레이션", "10년 기대인플레이션"],
+                    color_range=["#4C78A8", "#F58518"],
+                    y_title="%",
+                    key="bei",
                 )
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
@@ -384,9 +381,7 @@ if active_tab == "👷 고용":
                         series_context(df, "MoM_chg", "비농업 고용 전월 대비 증감(천 명)", suffix="K"),
                         payrolls_latest_date,
                     )
-                st.altair_chart(
-                    zoom_chart(df, x="date", y="MoM_chg", y_title="천 명", mark="bar"), width="stretch"
-                )
+                render_zoomable_chart(df, x="date", y="MoM_chg", y_title="천 명", mark="bar", key="payrolls")
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -403,7 +398,7 @@ if active_tab == "👷 고용":
                     analysis_button(
                         "unrate", "실업률", series_context(df, "value", "실업률(%)", suffix="%", signed=False), unrate_latest_date
                     )
-                st.altair_chart(zoom_chart(df, x="date", y="value", y_title="%"), width="stretch")
+                render_zoomable_chart(df, x="date", y="value", y_title="%", key="unrate")
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -420,7 +415,7 @@ if active_tab == "👷 고용":
                     analysis_button(
                         "wages", "평균시급 (YoY)", series_context(df, "YoY%", "평균시급 YoY", suffix="%"), wages_latest_date
                     )
-                st.altair_chart(zoom_chart(df, x="date", y="YoY%", y_title="YoY (%)"), width="stretch")
+                render_zoomable_chart(df, x="date", y="YoY%", y_title="YoY (%)", key="wages")
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -445,7 +440,7 @@ if active_tab == "👷 고용":
                         series_context(df, "value", "신규 실업수당 청구건수", signed=False),
                         latest["date"].strftime("%Y-%m-%d"),
                     )
-                st.altair_chart(zoom_chart(df, x="date", y="value", y_title="건"), width="stretch")
+                render_zoomable_chart(df, x="date", y="value", y_title="건", key="claims")
             except Exception as e:  # noqa: BLE001
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -470,17 +465,15 @@ if active_tab == "🏭 경기·연준":
             )
             merged_kr = pd.merge(leading, coincident, on="date", how="inner")
             long_kr = merged_kr.melt(id_vars="date", var_name="구분", value_name="값")
-            st.altair_chart(
-                zoom_chart(
-                    long_kr,
-                    x="date",
-                    y="값",
-                    color="구분",
-                    color_domain=["선행종합지수(순환변동치)", "동행종합지수(순환변동치)"],
-                    color_range=["#F58518", "#4C78A8"],
-                    y_title="지수(2020=100)",
-                ),
-                width="stretch",
+            render_zoomable_chart(
+                long_kr,
+                x="date",
+                y="값",
+                color="구분",
+                color_domain=["선행종합지수(순환변동치)", "동행종합지수(순환변동치)"],
+                color_range=["#F58518", "#4C78A8"],
+                y_title="지수(2020=100)",
+                key="kr_index",
             )
         except Exception as e:  # noqa: BLE001
             st.warning(f"데이터를 불러올 수 없습니다: {e}")
@@ -507,11 +500,8 @@ if active_tab == "🏭 경기·연준":
         chart_df = ism_edited.dropna(subset=["release_date", "pmi"]).copy()
         chart_df["release_date"] = pd.to_datetime(chart_df["release_date"])
         chart_df = chart_df[chart_df["release_date"] >= pd.to_datetime(start_date)]
-        st.altair_chart(
-            zoom_chart(
-                chart_df, x="release_date", y="pmi", y_title="PMI", rule_y=50, rule_label="기준선(50)"
-            ),
-            width="stretch",
+        render_zoomable_chart(
+            chart_df, x="release_date", y="pmi", y_title="PMI", rule_y=50, rule_label="기준선(50)", key="ism_pmi"
         )
     else:
         st.info("위 표에 발표일(release_date)·기간(period)·수치(pmi)를 입력하면 추세 차트가 표시됩니다.")
@@ -544,9 +534,7 @@ if active_tab == "🏭 경기·연준":
         long_df = chart_df.melt(id_vars="meeting_date", value_vars=cols, var_name="구분", value_name="값").dropna(
             subset=["값"]
         )
-        st.altair_chart(
-            zoom_chart(long_df, x="meeting_date", y="값", color="구분", y_title="금리(%)"), width="stretch"
-        )
+        render_zoomable_chart(long_df, x="meeting_date", y="값", color="구분", y_title="금리(%)", key="fomc")
     else:
         st.info("위 표에 회의일(meeting_date)과 금리·점도표 값을 입력하면 추세 차트가 표시됩니다.")
 
@@ -590,22 +578,19 @@ if active_tab == "💵 금리":
         long_rates = merged.melt(
             id_vars="date", value_vars=["2Y", "10Y", "Fed 정책금리(상단)"], var_name="구분", value_name="금리(%)"
         ).dropna(subset=["금리(%)"])
-        st.altair_chart(
-            zoom_chart(
-                long_rates,
-                x="date",
-                y="금리(%)",
-                color="구분",
-                color_domain=["2Y", "10Y", "Fed 정책금리(상단)"],
-                color_range=["#4C78A8", "#54A24B", "#E45756"],
-                y_title="금리(%)",
-            ),
-            width="stretch",
+        render_zoomable_chart(
+            long_rates,
+            x="date",
+            y="금리(%)",
+            color="구분",
+            color_domain=["2Y", "10Y", "Fed 정책금리(상단)"],
+            color_range=["#4C78A8", "#54A24B", "#E45756"],
+            y_title="금리(%)",
+            key="rates_curve",
         )
         st.markdown("**장단기금리차 (10Y-2Y 스프레드)**")
-        st.altair_chart(
-            zoom_chart(merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)"),
-            width="stretch",
+        render_zoomable_chart(
+            merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)", key="rates_spread"
         )
     except Exception as e:  # noqa: BLE001
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
@@ -733,11 +718,8 @@ if active_tab == "📐 가치평가":
         latest = shiller_df.dropna(subset=["shiller_pe"]).iloc[-1]
         st.metric("최근 Shiller PE", f"{latest['shiller_pe']:.1f}", help=f"기준월: {latest['date'].strftime('%Y-%m')}")
 
-        st.altair_chart(
-            zoom_chart(
-                shiller_df, x="date", y="shiller_pe", y_title="Shiller PE", rule_y=17, rule_label="장기평균(~17)"
-            ),
-            width="stretch",
+        render_zoomable_chart(
+            shiller_df, x="date", y="shiller_pe", y_title="Shiller PE", rule_y=17, rule_label="장기평균(~17)", key="shiller_pe"
         )
     except FileNotFoundError:
         st.info("manual_shiller_pe.csv 파일을 찾을 수 없습니다.")
@@ -761,9 +743,7 @@ if active_tab == "📐 가치평가":
         buffett_view = buffett[buffett["date"] >= pd.to_datetime(start_date)]
         if not buffett_view.empty:
             st.metric("최근 버핏지수(장기평균=100)", f"{buffett_view.iloc[-1]['지수화']:.0f}")
-            st.altair_chart(
-                zoom_chart(buffett_view, x="date", y="지수화", y_title="버핏지수(장기평균=100)"), width="stretch"
-            )
+            render_zoomable_chart(buffett_view, x="date", y="지수화", y_title="버핏지수(장기평균=100)", key="buffett")
     except Exception as e:  # noqa: BLE001
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
@@ -845,9 +825,8 @@ if active_tab == "🧠 인간지표":
         vix = get_series("VIXCLS", str(start_date), api_key)
         latest_vix = vix.dropna(subset=["value"]).iloc[-1]
         st.metric(f"최근 VIX ({latest_vix['date'].strftime('%Y-%m-%d')})", f"{latest_vix['value']:.2f}")
-        st.altair_chart(
-            zoom_chart(vix, x="date", y="value", y_title="VIX", rule_y=20, rule_label="안정/공포 기준선(20)"),
-            width="stretch",
+        render_zoomable_chart(
+            vix, x="date", y="value", y_title="VIX", rule_y=20, rule_label="안정/공포 기준선(20)", key="vix"
         )
     except Exception as e:  # noqa: BLE001
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
@@ -863,7 +842,7 @@ if active_tab == "🧠 인간지표":
         move = get_yahoo_series("^MOVE", str(start_date), interval="1d")
         latest_move = move.iloc[-1]
         st.metric(f"최근 MOVE ({latest_move['date'].strftime('%Y-%m-%d')})", f"{latest_move['close']:.1f}")
-        st.altair_chart(zoom_chart(move, x="date", y="close", y_title="MOVE"), width="stretch")
+        render_zoomable_chart(move, x="date", y="close", y_title="MOVE", key="move")
     except Exception as e:  # noqa: BLE001
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
 

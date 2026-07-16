@@ -8,8 +8,6 @@ __pycache__/
 # 대용량 재생성 가능 캐시 (스크래핑으로 다시 만들 수 있음)
 sentiment_raw_posts.json
 
-# 실행 중 앱이 직접 써서 컨테이너 재시작 시 초기화되는 AI 해석 캐시
-ai_analysis_cache.json
 
 # OS/에디터
 .DS_Store
