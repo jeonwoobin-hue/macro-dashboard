@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -16,9 +16,36 @@ from news_client import fetch_top_economic_news
 
 load_dotenv()
 
-# 경제지표는 보통 하루 한 번만 갱신되고, FRED/ECOS 모두 분당 호출 한도가 있어
-# 여러 사람이 동시에 써도 한도를 넘기지 않도록 캐시를 넉넉히(6시간) 유지한다.
-CACHE_TTL_SECONDS = 6 * 60 * 60
+# 경제지표(물가·고용 등)는 대부분 월 1회, 청구건수는 주 1회 발표되므로 하루 한 번만
+# 최신 여부를 확인해도 충분하다. FRED/ECOS 분당 호출 한도 보호 + 재배포 직후 콜드 캐시
+# 상태에서의 API 호출 부담을 줄이기 위해 24시간으로 유지한다.
+CACHE_TTL_SECONDS = 24 * 60 * 60
+
+# 시장 탭(KOSPI/KOSDAQ/Nasdaq/Dow)은 각 거래소가 열려있는 시간에만 시간 단위로 갱신하고,
+# 장 마감 후에는 다음 개장 전까지 마지막 종가를 그대로 캐시에 고정한다(공휴일 캘린더는
+# 별도로 관리하지 않음 — 요일+시간대 기준의 근사치).
+MARKET_HOURS = {
+    "^KS11": ("Asia/Seoul", dtime(9, 0), dtime(15, 30)),
+    "^KQ11": ("Asia/Seoul", dtime(9, 0), dtime(15, 30)),
+    "^IXIC": ("America/New_York", dtime(9, 30), dtime(16, 0)),
+    "^DJI": ("America/New_York", dtime(9, 30), dtime(16, 0)),
+}
+
+
+def market_cache_bucket(tz_name: str, open_time: dtime, close_time: dtime) -> str:
+    """장중이면 시간 단위로, 장마감/휴장 중이면 마지막 거래일 종가로 캐시 키를 고정한다."""
+    now_local = datetime.now(ZoneInfo(tz_name))
+    is_weekday = now_local.weekday() < 5
+    if is_weekday and open_time <= now_local.time() <= close_time:
+        return now_local.strftime("%Y-%m-%d-%Hh")
+    if is_weekday and now_local.time() > close_time:
+        session_date = now_local.date()
+    else:
+        cand = now_local.date() - timedelta(days=1)
+        while cand.weekday() >= 5:
+            cand -= timedelta(days=1)
+        session_date = cand
+    return f"{session_date}-closed"
 
 
 def get_secret(name: str) -> str:
@@ -102,7 +129,7 @@ with st.sidebar:
 
     start_date = st.date_input("조회 시작일", value=pd.to_datetime("2018-01-01"))
     st.divider()
-    st.caption("데이터는 6시간 캐시됩니다(API 호출 한도 보호 목적). 최신값이 필요하면 새로고침하세요.")
+    st.caption("경제지표는 최대 24시간, 시장 지수는 장중 1시간 단위로 캐시됩니다(API 호출 한도 보호 목적).")
 
 if not api_key:
     st.warning("사이드바에 FRED API Key를 입력해야 자동 지표(물가·고용·금리)를 불러올 수 있습니다.")
@@ -118,6 +145,12 @@ def get_series(series_id: str, start: str, key: str) -> pd.DataFrame:
 @st.cache_data(ttl=CACHE_TTL_SECONDS)
 def get_yahoo_series(symbol: str, start: str, interval: str = "1mo") -> pd.DataFrame:
     return fetch_yahoo_series(symbol, start, interval=interval)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
+def get_market_index(symbol: str, start: str, cache_bucket: str) -> pd.DataFrame:
+    """시장 탭 실시간 지수용. cache_bucket(market_cache_bucket()의 결과)이 바뀔 때만 재호출된다."""
+    return fetch_yahoo_series(symbol, start, interval="1d")
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS)
@@ -173,12 +206,24 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
         show_analysis_dialog(title, indicator_key, title, context, cache_key)
 
 
-tab_market, tab_inflation, tab_labor, tab_growth_fed, tab_rates, tab_valuation, tab_sentiment, tab_news = st.tabs(
-    ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "📰 뉴스"]
+TAB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "📰 뉴스"]
+
+# st.tabs()는 화면에 안 보이는 탭이어도 매 rerun마다 안의 코드를 전부 실행해서,
+# 재배포 직후처럼 캐시가 비어있을 때 8개 탭 몫의 외부 API 호출(~20건)이 한 번에 몰리는
+# 원인이 됐다. segmented_control은 선택값을 코드에서 알 수 있어 선택된 탭만 실행하도록
+# 바꿀 수 있다(진짜 지연 로딩) — 대신 밑줄 탭 대신 알약형 버튼 UI로 바뀐다.
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = TAB_LABELS[0]
+
+_selected_tab = st.segmented_control(
+    "탭 선택", TAB_LABELS, default=st.session_state["active_tab"], label_visibility="collapsed"
 )
+if _selected_tab:
+    st.session_state["active_tab"] = _selected_tab
+active_tab = st.session_state["active_tab"]
 
 # ── 시장 ────────────────────────────────────────────────────
-with tab_market:
+if active_tab == "📈 시장":
     with st.container(key="scrollrow_market"):
         c1, c2, c3, c4 = st.columns(4)
 
@@ -193,7 +238,9 @@ with tab_market:
                 st.subheader(name)
                 st.caption(desc)
                 try:
-                    df = get_yahoo_series(symbol, str(start_date), interval="1d")
+                    tz_name, open_time, close_time = MARKET_HOURS[symbol]
+                    bucket = market_cache_bucket(tz_name, open_time, close_time)
+                    df = get_market_index(symbol, str(start_date), bucket)
                     latest = df.iloc[-1]
                     prev = df.iloc[-2]
                     chg_pct = (latest["close"] - prev["close"]) / prev["close"] * 100
@@ -212,7 +259,7 @@ with tab_market:
                     st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 물가 ────────────────────────────────────────────────────
-with tab_inflation:
+if active_tab == "🐟 물가":
     with st.container(key="scrollrow_inflation"):
         c1, c2, c3, c4 = st.columns(4)
 
@@ -317,7 +364,7 @@ with tab_inflation:
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 고용 ────────────────────────────────────────────────────
-with tab_labor:
+if active_tab == "👷 고용":
     with st.container(key="scrollrow_labor"):
         c1, c2, c3, c4 = st.columns(4)
 
@@ -403,7 +450,7 @@ with tab_labor:
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 경기·연준 (한국 경기종합지수 + 수동 입력 지표) ──────────
-with tab_growth_fed:
+if active_tab == "🏭 경기·연준":
     st.subheader("한국 경기종합지수 (선행·동행 순환변동치)")
     st.caption(
         "선행지수순환변동치는 향후 경기 방향, 동행지수순환변동치는 현재 경기 국면을 보여줍니다. "
@@ -504,7 +551,7 @@ with tab_growth_fed:
         st.info("위 표에 회의일(meeting_date)과 금리·점도표 값을 입력하면 추세 차트가 표시됩니다.")
 
 # ── 금리 ────────────────────────────────────────────────────
-with tab_rates:
+if active_tab == "💵 금리":
     st.subheader("美 2년물·10년물 국채금리 & 연준 정책금리")
     st.caption(
         "단기(2Y)·장기(10Y) 국채금리와 연준 정책금리(상단, 빨간선). "
@@ -635,7 +682,7 @@ with tab_rates:
         st.info("수익률곡선 데이터를 불러오지 못했습니다.")
 
 # ── 가치평가 ────────────────────────────────────────────────
-with tab_valuation:
+if active_tab == "📐 가치평가":
     st.subheader("반도체 버블 지수 (닷컴버블 vs AI·반도체 랠리)")
     st.caption(
         "PHLX 반도체지수(SOX)를 각 랠리 시작월 = 100으로 지수화해 상승폭을 직접 비교합니다. "
@@ -721,7 +768,7 @@ with tab_valuation:
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 인간지표 (시장 심리) ──────────────────────────────────────
-with tab_sentiment:
+if active_tab == "🧠 인간지표":
     st.subheader("국내주식 인간지표")
     st.caption(
         "국내 주식 커뮤니티의 전날 게시글을 시간대 4구간으로 나눠, "
@@ -821,7 +868,7 @@ with tab_sentiment:
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 뉴스 ────────────────────────────────────────────────────
-with tab_news:
+if active_tab == "📰 뉴스":
     st.subheader("어제자 경제 뉴스 Top 10")
     st.caption(
         "네이버 뉴스 랭킹(언론사별 최다조회 기사) 중 경제 키워드가 포함된 기사를 언론사당 1건씩, "

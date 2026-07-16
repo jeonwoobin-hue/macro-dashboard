@@ -53,3 +53,10 @@
 - feat: FRED/ECOS API 429 대응 — 신규 http_utils.py에 지수 백오프 재시도 추가, fred_client.py/ecos_client.py 적용
 - feat: 데이터 캐시 TTL을 1시간에서 6시간으로 확대(CACHE_TTL_SECONDS 상수), API 호출 빈도 절감
 - docs: README.md/MEMORY.md에 API 호출 한도 대응 방식 기록
+
+## 2026-07-16
+
+- fix: 다섯 번째 Segmentation fault 재발 대응 — `st.tabs()`를 `st.segmented_control()` + 조건분기로 교체해 선택 안 한 탭의 코드가 매 rerun마다 실행되지 않도록 변경(재배포 직후 콜드 캐시 상태에서 8개 탭 몫의 외부 API 호출이 한 번에 몰리는 것을 방지)
+- feat: 데이터 캐시 TTL을 6시간→24시간으로 확대(FRED/ECOS/뉴스는 대부분 월1회·주1회 발표라 하루 한 번 확인이면 충분)
+- feat: 시장 탭(KOSPI/KOSDAQ/Nasdaq/Dow) 전용 `market_cache_bucket()` 추가 — 장중엔 1시간 단위, 장마감·휴장 중엔 마지막 종가로 캐시 고정(요일+로컬 거래시간대 기준 근사치, 공휴일 캘린더는 미사용)
+- docs: MEMORY.md 배포 트러블슈팅 섹션에 다섯 번째 세그폴트 재발 및 조치 내역 기록
