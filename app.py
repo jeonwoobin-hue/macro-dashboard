@@ -9,7 +9,13 @@ from dotenv import load_dotenv
 
 from ai_analysis import get_indicator_analysis
 from charts import render_zoomable_chart, zoom_chart
-from ecos_client import COINCIDENT_INDEX_ITEM, LEADING_INDEX_ITEM, fetch_ecos_monthly
+from ecos_client import (
+    BASE_RATE_ITEM,
+    BASE_RATE_STAT_CODE,
+    COINCIDENT_INDEX_ITEM,
+    LEADING_INDEX_ITEM,
+    fetch_ecos_monthly,
+)
 from fred_client import add_change_columns, fetch_fred_series
 from market_data import fetch_yahoo_series
 from news_client import fetch_top_economic_news
@@ -77,6 +83,15 @@ st.markdown(
             flex: 0 0 340px;
         }
     }
+    /* 참고자료1 표: 좁은 화면(모바일 포함)에서 셀 텍스트가 줄바꿈으로 쪼개지지 않도록
+       표 자체를 가로 스크롤시킨다(칸이 눌려서 읽기 힘들어지는 문제 방지). */
+    div[class*="st-key-reftable_scroll"] {
+        overflow-x: auto;
+        padding-bottom: 0.6rem;
+    }
+    div[class*="st-key-reftable_scroll"] table {
+        white-space: nowrap;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -87,12 +102,25 @@ REFERENCE_TABLE_MD = """
 |---|---|---|---|---|
 | **Core CPI (MoM)** | 에너지·식품 제외 소비자물가 전월비 변화율. 연준이 가장 주목하는 근원 인플레 지표 | **FRED** (`CPILFESL`) | API (무료 키) | 매월 중순 |
 | **Core PCE (MoM)** | 에너지·식품 제외 개인소비지출 물가지수. 연준이 공식 타겟(2%)으로 삼는 지표 | **FRED** (`PCEPILFE`) | API | 매월 말 |
-| **Nonfarm Payrolls** | 비농업 부문 신규 고용자 수 증감. 경기 모멘텀의 대표 선행 신호 | **FRED** (`PAYEMS`) | API | 매월 첫째 금요일 |
+| **WTI 유가** | 서부텍사스산 원유 현물가($/배럴). 에너지 인플레이션과 에너지주 실적에 직결되는 선행 변수 | **FRED** (`DCOILWTICO`) | API | 매 영업일 |
+| **기대인플레이션 (BEI)** | 국채-물가연동국채(TIPS) 스프레드로 산출한 시장 기대인플레이션(5년·10년물) | **FRED** (`T5YIE`, `T10YIE`) | API | 매 영업일 |
+| **비농업 고용** | 비농업 부문 신규 고용자 수 증감. 경기 모멘텀의 대표 선행 신호 | **FRED** (`PAYEMS`) | API | 매월 첫째 금요일 |
 | **실업률** | 경제활동인구 중 실업자 비율. 연준 이중책무(고용) 판단 근거 | **FRED** (`UNRATE`) | API | NFP와 동시 발표 |
 | **평균시급 (AHE)** | 시간당 평균 임금, 전년비(YoY)가 임금발 인플레 압력 판단 기준 | **FRED** (`CES0500000003`) | API | NFP와 동시 발표 |
+| **신규 실업수당 청구건수** | 매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표 | **FRED** (`ICSA`) | API | 매주 목요일 |
 | **ISM 서비스 PMI** | 50 기준 서비스업 경기 확장/위축 판단. 소비 중심 미국 경제 특성상 중요도 높음 | **ISM 공식 발표 / investing.com 캘린더** | 무료 API 없음 → 수동 입력 | 매월 3영업일경 |
 | **FOMC (점도표·파월 기자회견)** | 연준 위원들의 금리 전망 중간값(점도표), 통화정책 방향성의 핵심 | **federalreserve.gov** (SEP, 성명서, 기자회견) | 무료 API 없음 → 수동 입력 + 링크 | 연 8회(점도표는 3·6·9·12월) |
-| **美 2Y·10Y 국채금리** | 단기·장기 금리, 스프레드(10Y-2Y)는 대표적 경기침체 예고 지표 | **FRED** (`DGS2`, `DGS10`) | API | 매 영업일 |
+| **한국 경기종합지수 (선행·동행)** | 순환변동치 기준, 향후 경기 방향(선행)·현재 경기 국면(동행) 판단 | **한국은행 ECOS** (통계표 `901Y067`) | API (무료 키) | 매월 |
+| **美 2Y·10Y 국채금리 · Fed 정책금리** | 단기·장기 금리, 스프레드(10Y-2Y)는 대표적 경기침체 예고 지표. 정책금리는 FOMC 결정치 | **FRED** (`DGS2`, `DGS10`, `DFEDTARU`) | API | 매 영업일(정책금리는 FOMC 시) |
+| **美 국채 수익률곡선** | 1개월~30년 전 만기 금리를 연결한 곡선. 우하향(역전)되면 경기침체 예고 신호로 흔히 해석 | **FRED** (`DGS1MO`~`DGS30`) | API | 매 영업일 |
+| **반도체 버블 지수 (SOX)** | PHLX 반도체지수, 닷컴버블 대비 현재 AI 랠리의 과열 정도를 비교 | **Yahoo Finance** (`^SOX`) | API(비공식 공개 차트) | 매 영업일 |
+| **Shiller PE (CAPE Ratio)** | S&P500 10년 평균 실질이익 기준 경기조정 PER. 장기평균(~17) 대비 고평가/저평가 판단 | **multpl.com** (Robert Shiller 데이터) | 무료 API 없음 → 스크래핑 | 매월 |
+| **버핏지수 근사치** | 시가총액(S&P500) ÷ GDP, 장기평균=100 지수화. 워런 버핏이 참고하는 밸류에이션 지표 근사치 | **Yahoo Finance**(`^GSPC`) + **FRED**(`GDP`) | API | 매 영업일(GDP는 분기) |
+| **VIX (공포지수)** | S&P500 옵션 내재변동성. 20 이하 안정, 30 이상 공포 국면으로 흔히 해석 | **FRED** (`VIXCLS`) | API | 매 영업일 |
+| **MOVE Index** | ICE BofA MOVE Index. 美 국채 옵션 내재변동성 기준, 채권시장판 VIX | **Yahoo Finance** (`^MOVE`) | API(비공식 공개 차트) | 매 영업일 |
+| **KOSPI·KOSDAQ·Nasdaq·Dow** | 한·미 대표 증시 지수 4종. 시장 탭에서 장중 1시간 단위로 갱신 | **Yahoo Finance** (`^KS11`,`^KQ11`,`^IXIC`,`^DJI`) | API(비공식 공개 차트) | 매 영업일 |
+| **국내주식 인간지표** | 국내 주식 커뮤니티(디시인사이드) 게시글 키워드 매칭 기반 긍정/부정 심리 분류 | 디시인사이드 국내주식 갤러리 | 크롤링 | 매일(전일자 기준) |
+| **경제 뉴스 Top 10** | 네이버 뉴스 랭킹 중 경제 키워드가 포함된 전일자 기사 | 네이버 뉴스 랭킹 | 크롤링 | 매일(전일자 기준) |
 """
 
 # ── 헤더 (제목 + 우상단 메뉴) ────────────────────────────────
@@ -103,7 +131,8 @@ with title_col:
 with menu_col:
     with st.popover("☰"):
         with st.expander("참고자료1. 지표별 최적 출처 요약"):
-            st.markdown(REFERENCE_TABLE_MD)
+            with st.container(key="reftable_scroll"):
+                st.markdown(REFERENCE_TABLE_MD)
 
 # ── 사이드바 ────────────────────────────────────────────────
 with st.sidebar:
@@ -154,8 +183,9 @@ def get_market_index(symbol: str, start: str, cache_bucket: str) -> pd.DataFrame
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS)
-def get_ecos_series(item_code: str, key: str, start_yyyymm: str, end_yyyymm: str) -> pd.DataFrame:
-    return fetch_ecos_monthly(item_code, key, start_yyyymm, end_yyyymm)
+def get_ecos_series(item_code: str, key: str, start_yyyymm: str, end_yyyymm: str, stat_code: str | None = None) -> pd.DataFrame:
+    kwargs = {"stat_code": stat_code} if stat_code else {}
+    return fetch_ecos_monthly(item_code, key, start_yyyymm, end_yyyymm, **kwargs)
 
 
 WORDCLOUD_DIR = os.path.join(os.path.dirname(__file__), "wordclouds")
@@ -542,7 +572,7 @@ if active_tab == "🏭 경기·연준":
 if active_tab == "💵 금리":
     st.subheader("美 2년물·10년물 국채금리 & 연준 정책금리")
     st.caption(
-        "단기(2Y)·장기(10Y) 국채금리와 연준 정책금리(상단, 빨간선). "
+        "단기(2Y)·장기(10Y) 국채금리와 연준 정책금리(상단, 빨간선), 한국은행 기준금리(진한 파란선). "
         "10Y-2Y 스프레드가 역전(음수)되면 대표적인 경기침체 예고 신호로 해석됩니다."
     )
 
@@ -556,6 +586,21 @@ if active_tab == "💵 금리":
         merged["10Y-2Y 스프레드"] = merged["10Y"] - merged["2Y"]
         merged = pd.merge(merged, dff, on="date", how="left")
         merged["Fed 정책금리(상단)"] = merged["Fed 정책금리(상단)"].ffill()
+
+        rate_cols = ["2Y", "10Y", "Fed 정책금리(상단)"]
+        rate_colors = ["#4C78A8", "#54A24B", "#E45756"]
+        if ecos_key:
+            start_ym = pd.to_datetime(start_date).strftime("%Y%m")
+            end_ym = pd.Timestamp.today().strftime("%Y%m")
+            kr_base = get_ecos_series(BASE_RATE_ITEM, ecos_key, start_ym, end_ym, stat_code=BASE_RATE_STAT_CODE)[
+                ["date", "value"]
+            ].rename(columns={"value": "한국은행 기준금리"})
+            merged = pd.merge(merged, kr_base, on="date", how="left")
+            merged["한국은행 기준금리"] = merged["한국은행 기준금리"].ffill()
+            rate_cols.append("한국은행 기준금리")
+            rate_colors.append("#08306B")  # 진한 파란색
+        else:
+            st.caption("사이드바에 ECOS API Key를 입력하면 한국은행 기준금리도 함께 표시됩니다.")
 
         c1, c2 = st.columns(2)
         with c1:
@@ -574,17 +619,19 @@ if active_tab == "💵 금리":
             spread = latest["10Y-2Y 스프레드"]
             st.metric("10Y-2Y 스프레드", f"{spread:+.2f}%p", delta="역전 중" if spread < 0 else "정상")
             st.metric("Fed 정책금리(상단)", f"{latest['Fed 정책금리(상단)']:.2f}%")
+            if "한국은행 기준금리" in merged and pd.notna(latest["한국은행 기준금리"]):
+                st.metric("한국은행 기준금리", f"{latest['한국은행 기준금리']:.2f}%")
 
         long_rates = merged.melt(
-            id_vars="date", value_vars=["2Y", "10Y", "Fed 정책금리(상단)"], var_name="구분", value_name="금리(%)"
+            id_vars="date", value_vars=rate_cols, var_name="구분", value_name="금리(%)"
         ).dropna(subset=["금리(%)"])
         render_zoomable_chart(
             long_rates,
             x="date",
             y="금리(%)",
             color="구분",
-            color_domain=["2Y", "10Y", "Fed 정책금리(상단)"],
-            color_range=["#4C78A8", "#54A24B", "#E45756"],
+            color_domain=rate_cols,
+            color_range=rate_colors,
             y_title="금리(%)",
             key="rates_curve",
         )

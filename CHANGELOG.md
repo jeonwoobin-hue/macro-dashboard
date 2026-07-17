@@ -64,3 +64,9 @@
 - feat: 모바일에서 안 되는 Vega-Lite 핀치줌(라이브러리 자체 미지원, 공식 문서로 확인) 대신 모든 시간축 차트에 ➕/➖ 확대·축소 버튼 추가(charts.py `render_zoomable_chart`)
 - style: 물가·고용탭 "🔍 해석" 버튼을 "🔍 AI해석"으로 변경
 - feat: AI 해석 결과를 GitHub Actions로 미리 생성해 커밋하는 `generate_ai_analysis.py` 추가 — 배포 컨테이너 재시작마다 초기화되던 `ai_analysis_cache.json`을 이제 git으로 버전관리해 재배포 후에도 유지, 지표가 실제로 새로 발표됐을 때만 Gemini 호출(그 외엔 버튼 클릭 시 즉시 캐시된 텍스트 표시)
+
+## 2026-07-17
+
+- feat: 참고자료1 표에 WTI·BEI·신규실업수당청구건수 및 그 외 누락 지표(한국 경기종합지수, Fed 정책금리, 수익률곡선, 반도체 버블지수, Shiller PE, 버핏지수, VIX, MOVE, 시장 4지수, 인간지표, 뉴스) 전부 추가, "Nonfarm Payrolls" → "비농업 고용"으로 통일
+- fix: 참고자료1 표가 모바일에서 셀이 눌려 읽기 힘들던 문제 — 표를 가로 스크롤 컨테이너로 감싸 텍스트 줄바꿈 대신 스크롤되도록 수정
+- feat: 금리탭 차트에 한국은행 기준금리(ECOS `722Y001`/`0101000`, 진한 파란색) 라인 추가 — `ecos_client.fetch_ecos_monthly`가 stat_code를 인자로 받도록 일반화

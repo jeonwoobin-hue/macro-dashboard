@@ -10,10 +10,16 @@ COMPOSITE_INDEX_STAT_CODE = "901Y067"
 LEADING_INDEX_ITEM = "I16E"  # 선행지수순환변동치
 COINCIDENT_INDEX_ITEM = "I16D"  # 동행지수순환변동치
 
+# 1.3.1. 한국은행 기준금리 및 여수신금리
+BASE_RATE_STAT_CODE = "722Y001"
+BASE_RATE_ITEM = "0101000"  # 한국은행 기준금리
 
-def fetch_ecos_monthly(item_code: str, api_key: str, start_yyyymm: str, end_yyyymm: str) -> pd.DataFrame:
-    """한국은행 ECOS에서 경기종합지수(순환변동치) 월별 시계열을 가져온다."""
-    url = f"{ECOS_URL}/{api_key}/json/kr/1/500/{COMPOSITE_INDEX_STAT_CODE}/M/{start_yyyymm}/{end_yyyymm}/{item_code}"
+
+def fetch_ecos_monthly(
+    item_code: str, api_key: str, start_yyyymm: str, end_yyyymm: str, stat_code: str = COMPOSITE_INDEX_STAT_CODE
+) -> pd.DataFrame:
+    """한국은행 ECOS에서 월별 시계열을 가져온다(기본값: 경기종합지수 순환변동치)."""
+    url = f"{ECOS_URL}/{api_key}/json/kr/1/500/{stat_code}/M/{start_yyyymm}/{end_yyyymm}/{item_code}"
     resp = get_with_retry(url, timeout=15)
     try:
         resp.raise_for_status()
