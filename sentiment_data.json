@@ -1,779 +1,709 @@
 {
-  "target_date": "2026-07-17",
-  "window_start": "2026-07-17T09:00:00+09:00",
-  "window_end": "2026-07-18T06:00:00+09:00",
-  "total_posts_scanned": 15482,
-  "generated_at": "2026-07-18T08:56:44.296770+09:00",
+  "target_date": "2026-07-18",
+  "window_start": "2026-07-18T09:00:00+09:00",
+  "window_end": "2026-07-19T06:00:00+09:00",
+  "total_posts_scanned": 6798,
+  "generated_at": "2026-07-19T08:56:52.951787+09:00",
   "buckets": {
     "09:00~15:30 한국장 거래중": {
-      "total_posts": 5010,
-      "positive_posts": 81,
-      "negative_posts": 116,
+      "total_posts": 2464,
+      "positive_posts": 55,
+      "negative_posts": 56,
       "positive_keywords": [
         {
+          "keyword": "반도체",
+          "count": 12,
+          "pct": 20.7
+        },
+        {
           "keyword": "하이닉스",
-          "count": 15,
-          "pct": 16.7
+          "count": 8,
+          "pct": 13.8
         },
         {
           "keyword": "코스피",
-          "count": 10,
-          "pct": 11.1
-        },
-        {
-          "keyword": "트럼프",
-          "count": 9,
-          "pct": 10.0
-        },
-        {
-          "keyword": "미장",
           "count": 8,
-          "pct": 8.9
+          "pct": 13.8
         },
         {
-          "keyword": "반도체",
-          "count": 8,
-          "pct": 8.9
-        },
-        {
-          "keyword": "국장",
-          "count": 6,
-          "pct": 6.7
-        },
-        {
-          "keyword": "나스닥",
+          "keyword": "중국",
           "count": 4,
-          "pct": 4.4
-        },
-        {
-          "keyword": "곱버스",
-          "count": 4,
-          "pct": 4.4
-        },
-        {
-          "keyword": "레버리지",
-          "count": 3,
-          "pct": 3.3
-        },
-        {
-          "keyword": "코스닥",
-          "count": 3,
-          "pct": 3.3
-        },
-        {
-          "keyword": "환율",
-          "count": 3,
-          "pct": 3.3
-        },
-        {
-          "keyword": "개미",
-          "count": 3,
-          "pct": 3.3
-        },
-        {
-          "keyword": "채권",
-          "count": 2,
-          "pct": 2.2
+          "pct": 6.9
         },
         {
           "keyword": "실적",
-          "count": 2,
-          "pct": 2.2
+          "count": 4,
+          "pct": 6.9
         },
         {
-          "keyword": "선물",
+          "keyword": "금리",
+          "count": 4,
+          "pct": 6.9
+        },
+        {
+          "keyword": "AI",
+          "count": 4,
+          "pct": 6.9
+        },
+        {
+          "keyword": "곱버스",
           "count": 2,
-          "pct": 2.2
+          "pct": 3.4
+        },
+        {
+          "keyword": "개미",
+          "count": 2,
+          "pct": 3.4
+        },
+        {
+          "keyword": "코스닥",
+          "count": 1,
+          "pct": 1.7
+        },
+        {
+          "keyword": "로봇",
+          "count": 1,
+          "pct": 1.7
+        },
+        {
+          "keyword": "삼성전자",
+          "count": 1,
+          "pct": 1.7
         },
         {
           "keyword": "달러",
           "count": 1,
-          "pct": 1.1
+          "pct": 1.7
         },
         {
-          "keyword": "금리",
+          "keyword": "기관",
           "count": 1,
-          "pct": 1.1
+          "pct": 1.7
         },
         {
-          "keyword": "일본",
+          "keyword": "트럼프",
           "count": 1,
-          "pct": 1.1
+          "pct": 1.7
         },
         {
-          "keyword": "2차전지",
+          "keyword": "국장",
           "count": 1,
-          "pct": 1.1
+          "pct": 1.7
         },
         {
-          "keyword": "바이오",
+          "keyword": "외국인",
           "count": 1,
-          "pct": 1.1
+          "pct": 1.7
+        },
+        {
+          "keyword": "나스닥",
+          "count": 1,
+          "pct": 1.7
+        },
+        {
+          "keyword": "부동산",
+          "count": 1,
+          "pct": 1.7
         }
       ],
       "negative_keywords": [
         {
           "keyword": "반도체",
-          "count": 19,
-          "pct": 14.2
-        },
-        {
-          "keyword": "미장",
-          "count": 16,
-          "pct": 11.9
-        },
-        {
-          "keyword": "나스닥",
           "count": 12,
-          "pct": 9.0
-        },
-        {
-          "keyword": "국장",
-          "count": 9,
-          "pct": 6.7
-        },
-        {
-          "keyword": "하이닉스",
-          "count": 9,
-          "pct": 6.7
-        },
-        {
-          "keyword": "일본",
-          "count": 9,
-          "pct": 6.7
+          "pct": 16.9
         },
         {
           "keyword": "코스피",
-          "count": 9,
-          "pct": 6.7
-        },
-        {
-          "keyword": "레버리지",
           "count": 8,
-          "pct": 6.0
-        },
-        {
-          "keyword": "트럼프",
-          "count": 5,
-          "pct": 3.7
-        },
-        {
-          "keyword": "AI",
-          "count": 4,
-          "pct": 3.0
-        },
-        {
-          "keyword": "2차전지",
-          "count": 4,
-          "pct": 3.0
-        },
-        {
-          "keyword": "환율",
-          "count": 4,
-          "pct": 3.0
+          "pct": 11.3
         },
         {
           "keyword": "중국",
+          "count": 7,
+          "pct": 9.9
+        },
+        {
+          "keyword": "하이닉스",
+          "count": 6,
+          "pct": 8.5
+        },
+        {
+          "keyword": "AI",
+          "count": 6,
+          "pct": 8.5
+        },
+        {
+          "keyword": "국장",
+          "count": 5,
+          "pct": 7.0
+        },
+        {
+          "keyword": "나스닥",
           "count": 4,
-          "pct": 3.0
+          "pct": 5.6
         },
         {
-          "keyword": "개미",
-          "count": 3,
-          "pct": 2.2
+          "keyword": "미장",
+          "count": 4,
+          "pct": 5.6
         },
         {
-          "keyword": "실적",
+          "keyword": "현대차",
           "count": 3,
-          "pct": 2.2
+          "pct": 4.2
         },
         {
           "keyword": "공매도",
-          "count": 2,
-          "pct": 1.5
+          "count": 3,
+          "pct": 4.2
         },
         {
-          "keyword": "엔비디아",
+          "keyword": "관세",
           "count": 2,
-          "pct": 1.5
+          "pct": 2.8
         },
         {
-          "keyword": "선물",
+          "keyword": "ETF",
           "count": 2,
-          "pct": 1.5
-        },
-        {
-          "keyword": "이차전지",
-          "count": 1,
-          "pct": 0.7
+          "pct": 2.8
         },
         {
           "keyword": "코스닥",
           "count": 1,
-          "pct": 0.7
+          "pct": 1.4
+        },
+        {
+          "keyword": "SK",
+          "count": 1,
+          "pct": 1.4
+        },
+        {
+          "keyword": "선물",
+          "count": 1,
+          "pct": 1.4
+        },
+        {
+          "keyword": "실적",
+          "count": 1,
+          "pct": 1.4
+        },
+        {
+          "keyword": "2차전지",
+          "count": 1,
+          "pct": 1.4
+        },
+        {
+          "keyword": "네이버",
+          "count": 1,
+          "pct": 1.4
+        },
+        {
+          "keyword": "부동산",
+          "count": 1,
+          "pct": 1.4
+        },
+        {
+          "keyword": "삼성전자",
+          "count": 1,
+          "pct": 1.4
         }
       ]
     },
     "15:30~18:00 장 마감 후 분석": {
-      "total_posts": 2057,
-      "positive_posts": 24,
-      "negative_posts": 55,
+      "total_posts": 890,
+      "positive_posts": 14,
+      "negative_posts": 15,
       "positive_keywords": [
         {
-          "keyword": "미장",
-          "count": 6,
-          "pct": 22.2
-        },
-        {
-          "keyword": "하이닉스",
-          "count": 4,
-          "pct": 14.8
-        },
-        {
-          "keyword": "국장",
-          "count": 3,
-          "pct": 11.1
-        },
-        {
-          "keyword": "코스피",
-          "count": 3,
-          "pct": 11.1
-        },
-        {
           "keyword": "반도체",
-          "count": 2,
-          "pct": 7.4
+          "count": 5,
+          "pct": 31.2
         },
         {
-          "keyword": "달러",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "실적",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "개미",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "나스닥",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "곱버스",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "일본",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "SK하이닉스",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "SK",
-          "count": 1,
-          "pct": 3.7
-        },
-        {
-          "keyword": "AI",
-          "count": 1,
-          "pct": 3.7
-        }
-      ],
-      "negative_keywords": [
-        {
-          "keyword": "나스닥",
-          "count": 10,
-          "pct": 15.9
-        },
-        {
-          "keyword": "반도체",
-          "count": 8,
-          "pct": 12.7
-        },
-        {
-          "keyword": "미장",
-          "count": 6,
-          "pct": 9.5
-        },
-        {
-          "keyword": "하이닉스",
-          "count": 6,
-          "pct": 9.5
-        },
-        {
-          "keyword": "국장",
-          "count": 6,
-          "pct": 9.5
-        },
-        {
-          "keyword": "코스피",
-          "count": 4,
-          "pct": 6.3
-        },
-        {
-          "keyword": "개미",
-          "count": 4,
-          "pct": 6.3
-        },
-        {
-          "keyword": "기관",
+          "keyword": "네이버",
           "count": 3,
-          "pct": 4.8
-        },
-        {
-          "keyword": "코스닥",
-          "count": 2,
-          "pct": 3.2
-        },
-        {
-          "keyword": "금리",
-          "count": 2,
-          "pct": 3.2
-        },
-        {
-          "keyword": "중국",
-          "count": 2,
-          "pct": 3.2
-        },
-        {
-          "keyword": "공매도",
-          "count": 1,
-          "pct": 1.6
+          "pct": 18.8
         },
         {
           "keyword": "현대차",
-          "count": 1,
-          "pct": 1.6
+          "count": 2,
+          "pct": 12.5
         },
         {
-          "keyword": "레버리지",
-          "count": 1,
-          "pct": 1.6
+          "keyword": "하이닉스",
+          "count": 2,
+          "pct": 12.5
         },
         {
-          "keyword": "환율",
+          "keyword": "개미",
           "count": 1,
-          "pct": 1.6
+          "pct": 6.2
         },
         {
-          "keyword": "조선",
+          "keyword": "국장",
           "count": 1,
-          "pct": 1.6
-        },
-        {
-          "keyword": "관세",
-          "count": 1,
-          "pct": 1.6
+          "pct": 6.2
         },
         {
           "keyword": "AI",
           "count": 1,
-          "pct": 1.6
+          "pct": 6.2
         },
         {
           "keyword": "외국인",
           "count": 1,
-          "pct": 1.6
-        },
-        {
-          "keyword": "원화",
-          "count": 1,
-          "pct": 1.6
+          "pct": 6.2
         }
-      ]
-    },
-    "18:00~23:30 유럽장 시작": {
-      "total_posts": 5668,
-      "positive_posts": 83,
-      "negative_posts": 80,
-      "positive_keywords": [
+      ],
+      "negative_keywords": [
         {
           "keyword": "반도체",
-          "count": 21,
-          "pct": 21.2
+          "count": 4,
+          "pct": 23.5
         },
         {
-          "keyword": "미장",
-          "count": 17,
-          "pct": 17.2
-        },
-        {
-          "keyword": "하이닉스",
-          "count": 13,
-          "pct": 13.1
-        },
-        {
-          "keyword": "국장",
-          "count": 9,
-          "pct": 9.1
-        },
-        {
-          "keyword": "코스피",
-          "count": 7,
-          "pct": 7.1
-        },
-        {
-          "keyword": "옵션",
-          "count": 6,
-          "pct": 6.1
+          "keyword": "코인",
+          "count": 2,
+          "pct": 11.8
         },
         {
           "keyword": "나스닥",
-          "count": 5,
-          "pct": 5.1
-        },
-        {
-          "keyword": "달러",
-          "count": 3,
-          "pct": 3.0
-        },
-        {
-          "keyword": "일본",
           "count": 2,
-          "pct": 2.0
+          "pct": 11.8
         },
         {
-          "keyword": "곱버스",
+          "keyword": "코스닥",
           "count": 1,
-          "pct": 1.0
+          "pct": 5.9
         },
         {
-          "keyword": "조선",
+          "keyword": "옵션",
           "count": 1,
-          "pct": 1.0
+          "pct": 5.9
         },
         {
-          "keyword": "실적",
+          "keyword": "기관",
           "count": 1,
-          "pct": 1.0
-        },
-        {
-          "keyword": "선물",
-          "count": 1,
-          "pct": 1.0
-        },
-        {
-          "keyword": "인플레이션",
-          "count": 1,
-          "pct": 1.0
-        },
-        {
-          "keyword": "엔비디아",
-          "count": 1,
-          "pct": 1.0
-        },
-        {
-          "keyword": "현대차",
-          "count": 1,
-          "pct": 1.0
+          "pct": 5.9
         },
         {
           "keyword": "트럼프",
           "count": 1,
-          "pct": 1.0
+          "pct": 5.9
         },
         {
-          "keyword": "개미",
+          "keyword": "코스피",
           "count": 1,
-          "pct": 1.0
+          "pct": 5.9
         },
         {
-          "keyword": "SK하이닉스",
+          "keyword": "공매도",
           "count": 1,
-          "pct": 1.0
+          "pct": 5.9
         },
         {
           "keyword": "SK",
           "count": 1,
-          "pct": 1.0
-        }
-      ],
-      "negative_keywords": [
-        {
-          "keyword": "반도체",
-          "count": 16,
-          "pct": 18.0
-        },
-        {
-          "keyword": "코스피",
-          "count": 10,
-          "pct": 11.2
-        },
-        {
-          "keyword": "나스닥",
-          "count": 9,
-          "pct": 10.1
+          "pct": 5.9
         },
         {
           "keyword": "국장",
-          "count": 7,
-          "pct": 7.9
+          "count": 1,
+          "pct": 5.9
         },
         {
           "keyword": "미장",
-          "count": 6,
-          "pct": 6.7
+          "count": 1,
+          "pct": 5.9
+        }
+      ]
+    },
+    "18:00~23:30 유럽장 시작": {
+      "total_posts": 2131,
+      "positive_posts": 46,
+      "negative_posts": 30,
+      "positive_keywords": [
+        {
+          "keyword": "반도체",
+          "count": 11,
+          "pct": 22.0
         },
         {
           "keyword": "하이닉스",
-          "count": 6,
-          "pct": 6.7
-        },
-        {
-          "keyword": "옵션",
-          "count": 4,
-          "pct": 4.5
-        },
-        {
-          "keyword": "달러",
-          "count": 4,
-          "pct": 4.5
-        },
-        {
-          "keyword": "공매도",
-          "count": 3,
-          "pct": 3.4
+          "count": 8,
+          "pct": 16.0
         },
         {
           "keyword": "개미",
-          "count": 3,
-          "pct": 3.4
-        },
-        {
-          "keyword": "금리",
-          "count": 3,
-          "pct": 3.4
+          "count": 4,
+          "pct": 8.0
         },
         {
           "keyword": "곱버스",
           "count": 3,
-          "pct": 3.4
+          "pct": 6.0
         },
         {
-          "keyword": "선물",
+          "keyword": "실적",
+          "count": 3,
+          "pct": 6.0
+        },
+        {
+          "keyword": "현대차",
+          "count": 3,
+          "pct": 6.0
+        },
+        {
+          "keyword": "코스피",
           "count": 2,
-          "pct": 2.2
+          "pct": 4.0
+        },
+        {
+          "keyword": "삼성전자",
+          "count": 2,
+          "pct": 4.0
+        },
+        {
+          "keyword": "코스닥",
+          "count": 2,
+          "pct": 4.0
         },
         {
           "keyword": "기관",
           "count": 2,
-          "pct": 2.2
-        },
-        {
-          "keyword": "실적",
-          "count": 2,
-          "pct": 2.2
-        },
-        {
-          "keyword": "레버리지",
-          "count": 2,
-          "pct": 2.2
-        },
-        {
-          "keyword": "코인",
-          "count": 1,
-          "pct": 1.1
-        },
-        {
-          "keyword": "외국인",
-          "count": 1,
-          "pct": 1.1
-        },
-        {
-          "keyword": "조선",
-          "count": 1,
-          "pct": 1.1
-        },
-        {
-          "keyword": "엔비디아",
-          "count": 1,
-          "pct": 1.1
-        }
-      ]
-    },
-    "21:30~06:00 미국 경제지표·미국장": {
-      "total_posts": 5250,
-      "positive_posts": 57,
-      "negative_posts": 66,
-      "positive_keywords": [
-        {
-          "keyword": "반도체",
-          "count": 19,
-          "pct": 30.2
+          "pct": 4.0
         },
         {
           "keyword": "미장",
-          "count": 8,
-          "pct": 12.7
+          "count": 1,
+          "pct": 2.0
         },
         {
-          "keyword": "국장",
-          "count": 6,
-          "pct": 9.5
-        },
-        {
-          "keyword": "나스닥",
-          "count": 6,
-          "pct": 9.5
-        },
-        {
-          "keyword": "코스피",
-          "count": 5,
-          "pct": 7.9
-        },
-        {
-          "keyword": "옵션",
-          "count": 5,
-          "pct": 7.9
-        },
-        {
-          "keyword": "하이닉스",
-          "count": 4,
-          "pct": 6.3
-        },
-        {
-          "keyword": "곱버스",
-          "count": 3,
-          "pct": 4.8
-        },
-        {
-          "keyword": "실적",
-          "count": 2,
-          "pct": 3.2
-        },
-        {
-          "keyword": "선물",
-          "count": 2,
-          "pct": 3.2
+          "keyword": "환율",
+          "count": 1,
+          "pct": 2.0
         },
         {
           "keyword": "중국",
           "count": 1,
-          "pct": 1.6
+          "pct": 2.0
         },
         {
-          "keyword": "조선",
+          "keyword": "국장",
           "count": 1,
-          "pct": 1.6
+          "pct": 2.0
         },
         {
-          "keyword": "인플레이션",
+          "keyword": "코인",
           "count": 1,
-          "pct": 1.6
+          "pct": 2.0
+        },
+        {
+          "keyword": "부동산",
+          "count": 1,
+          "pct": 2.0
+        },
+        {
+          "keyword": "외국인",
+          "count": 1,
+          "pct": 2.0
+        },
+        {
+          "keyword": "선물",
+          "count": 1,
+          "pct": 2.0
+        },
+        {
+          "keyword": "AI",
+          "count": 1,
+          "pct": 2.0
+        },
+        {
+          "keyword": "금리",
+          "count": 1,
+          "pct": 2.0
         }
       ],
       "negative_keywords": [
         {
           "keyword": "반도체",
-          "count": 18,
-          "pct": 23.7
-        },
-        {
-          "keyword": "국장",
-          "count": 8,
-          "pct": 10.5
-        },
-        {
-          "keyword": "나스닥",
           "count": 7,
-          "pct": 9.2
-        },
-        {
-          "keyword": "옵션",
-          "count": 6,
-          "pct": 7.9
+          "pct": 21.9
         },
         {
           "keyword": "코스피",
-          "count": 5,
-          "pct": 6.6
-        },
-        {
-          "keyword": "달러",
-          "count": 4,
-          "pct": 5.3
-        },
-        {
-          "keyword": "미장",
-          "count": 4,
-          "pct": 5.3
-        },
-        {
-          "keyword": "곱버스",
-          "count": 4,
-          "pct": 5.3
-        },
-        {
-          "keyword": "기관",
-          "count": 3,
-          "pct": 3.9
-        },
-        {
-          "keyword": "하이닉스",
-          "count": 3,
-          "pct": 3.9
-        },
-        {
-          "keyword": "외국인",
-          "count": 2,
-          "pct": 2.6
-        },
-        {
-          "keyword": "실적",
-          "count": 2,
-          "pct": 2.6
+          "count": 6,
+          "pct": 18.8
         },
         {
           "keyword": "개미",
+          "count": 4,
+          "pct": 12.5
+        },
+        {
+          "keyword": "레버리지",
           "count": 2,
-          "pct": 2.6
+          "pct": 6.2
         },
         {
           "keyword": "공매도",
           "count": 2,
-          "pct": 2.6
+          "pct": 6.2
+        },
+        {
+          "keyword": "곱버스",
+          "count": 2,
+          "pct": 6.2
+        },
+        {
+          "keyword": "외국인",
+          "count": 1,
+          "pct": 3.1
+        },
+        {
+          "keyword": "코스닥",
+          "count": 1,
+          "pct": 3.1
+        },
+        {
+          "keyword": "나스닥",
+          "count": 1,
+          "pct": 3.1
         },
         {
           "keyword": "금리",
-          "count": 2,
-          "pct": 2.6
+          "count": 1,
+          "pct": 3.1
+        },
+        {
+          "keyword": "기관",
+          "count": 1,
+          "pct": 3.1
+        },
+        {
+          "keyword": "부동산",
+          "count": 1,
+          "pct": 3.1
+        },
+        {
+          "keyword": "국장",
+          "count": 1,
+          "pct": 3.1
+        },
+        {
+          "keyword": "관세",
+          "count": 1,
+          "pct": 3.1
         },
         {
           "keyword": "일본",
           "count": 1,
-          "pct": 1.3
+          "pct": 3.1
+        }
+      ]
+    },
+    "21:30~06:00 미국 경제지표·미국장": {
+      "total_posts": 2073,
+      "positive_posts": 36,
+      "negative_posts": 35,
+      "positive_keywords": [
+        {
+          "keyword": "하이닉스",
+          "count": 9,
+          "pct": 22.0
         },
         {
-          "keyword": "현대차",
+          "keyword": "코스피",
+          "count": 8,
+          "pct": 19.5
+        },
+        {
+          "keyword": "반도체",
+          "count": 4,
+          "pct": 9.8
+        },
+        {
+          "keyword": "실적",
+          "count": 2,
+          "pct": 4.9
+        },
+        {
+          "keyword": "코인",
+          "count": 2,
+          "pct": 4.9
+        },
+        {
+          "keyword": "개미",
+          "count": 2,
+          "pct": 4.9
+        },
+        {
+          "keyword": "삼성전자",
+          "count": 2,
+          "pct": 4.9
+        },
+        {
+          "keyword": "원화",
           "count": 1,
-          "pct": 1.3
+          "pct": 2.4
+        },
+        {
+          "keyword": "비트코인",
+          "count": 1,
+          "pct": 2.4
+        },
+        {
+          "keyword": "방산",
+          "count": 1,
+          "pct": 2.4
         },
         {
           "keyword": "선물",
           "count": 1,
-          "pct": 1.3
+          "pct": 2.4
         },
         {
-          "keyword": "코인",
+          "keyword": "레버리지",
           "count": 1,
-          "pct": 1.3
+          "pct": 2.4
+        },
+        {
+          "keyword": "곱버스",
+          "count": 1,
+          "pct": 2.4
+        },
+        {
+          "keyword": "미장",
+          "count": 1,
+          "pct": 2.4
+        },
+        {
+          "keyword": "환율",
+          "count": 1,
+          "pct": 2.4
+        },
+        {
+          "keyword": "중국",
+          "count": 1,
+          "pct": 2.4
+        },
+        {
+          "keyword": "현대차",
+          "count": 1,
+          "pct": 2.4
+        },
+        {
+          "keyword": "국장",
+          "count": 1,
+          "pct": 2.4
+        },
+        {
+          "keyword": "코스닥",
+          "count": 1,
+          "pct": 2.4
+        }
+      ],
+      "negative_keywords": [
+        {
+          "keyword": "반도체",
+          "count": 8,
+          "pct": 21.6
+        },
+        {
+          "keyword": "코스피",
+          "count": 4,
+          "pct": 10.8
+        },
+        {
+          "keyword": "나스닥",
+          "count": 3,
+          "pct": 8.1
+        },
+        {
+          "keyword": "레버리지",
+          "count": 3,
+          "pct": 8.1
+        },
+        {
+          "keyword": "공매도",
+          "count": 2,
+          "pct": 5.4
+        },
+        {
+          "keyword": "하이닉스",
+          "count": 2,
+          "pct": 5.4
+        },
+        {
+          "keyword": "실적",
+          "count": 2,
+          "pct": 5.4
+        },
+        {
+          "keyword": "코스닥",
+          "count": 2,
+          "pct": 5.4
+        },
+        {
+          "keyword": "국장",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "선물",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "미장",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "AI",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "2차전지",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "부동산",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "LG",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "환율",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "금리",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "삼성전자",
+          "count": 1,
+          "pct": 2.7
+        },
+        {
+          "keyword": "외국인",
+          "count": 1,
+          "pct": 2.7
         }
       ]
     }
   },
   "total": {
-    "positive_posts": 213,
-    "negative_posts": 279
+    "positive_posts": 131,
+    "negative_posts": 127
   }
 }
