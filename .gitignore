@@ -8,6 +8,9 @@ __pycache__/
 # 대용량 재생성 가능 캐시 (스크래핑으로 다시 만들 수 있음)
 sentiment_raw_posts.json
 
+# run_stock_pipeline.py 실행마다 재생성되는 차트/마크다운 리포트 (앱은 data/latest_run.json만 읽음)
+reports/
+
 
 # OS/에디터
 .DS_Store

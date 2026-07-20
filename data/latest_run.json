@@ -1,0 +1,182 @@
+{
+  "run_tag": "20260713_183341",
+  "timestamp": "2026-07-13T18:34:56",
+  "recommendations": [
+    {
+      "code": "105560",
+      "per": 11.77,
+      "pbr": 1.11,
+      "name": "KB금융",
+      "supply_value_sum": 86350966000.0,
+      "value_score": 75.0,
+      "supply_score": 70.0,
+      "total_score": 72.5,
+      "group": "저평가·수급강세 (추천)",
+      "market_cap_rank": 8
+    },
+    {
+      "code": "032830",
+      "per": 22.71,
+      "pbr": 0.72,
+      "name": "삼성생명",
+      "supply_value_sum": 100159968500.0,
+      "value_score": 60.0,
+      "supply_score": 80.0,
+      "total_score": 70.0,
+      "group": "저평가·수급강세 (추천)",
+      "market_cap_rank": 9
+    },
+    {
+      "code": "005380",
+      "per": 13.69,
+      "pbr": 0.97,
+      "name": "현대차",
+      "supply_value_sum": -887669544500.0,
+      "value_score": 75.0,
+      "supply_score": 40.0,
+      "total_score": 57.5,
+      "group": "저평가·수급약세 (관망)",
+      "market_cap_rank": 6
+    },
+    {
+      "code": "005935",
+      "per": 14.3,
+      "pbr": 2.46,
+      "name": "삼성전자우",
+      "supply_value_sum": -435209716400.0,
+      "value_score": 60.0,
+      "supply_score": 50.0,
+      "total_score": 55.0,
+      "group": "저평가·수급약세 (관망)",
+      "market_cap_rank": 4
+    },
+    {
+      "code": "207940",
+      "per": 45.49,
+      "pbr": 8.17,
+      "name": "삼성바이오로직스",
+      "supply_value_sum": 172998570000.0,
+      "value_score": 15.0,
+      "supply_score": 90.0,
+      "total_score": 52.5,
+      "group": "고평가·수급강세 (주의)",
+      "market_cap_rank": 10
+    },
+    {
+      "code": "009150",
+      "per": 121.75,
+      "pbr": 9.92,
+      "name": "삼성전기",
+      "supply_value_sum": 1133349173000.0,
+      "value_score": 5.0,
+      "supply_score": 100.0,
+      "total_score": 52.5,
+      "group": "고평가·수급강세 (주의)",
+      "market_cap_rank": 5
+    },
+    {
+      "code": "402340",
+      "per": 9.86,
+      "pbr": 4.24,
+      "name": "SK스퀘어",
+      "supply_value_sum": -2829801857000.0,
+      "value_score": 60.0,
+      "supply_score": 30.0,
+      "total_score": 45.0,
+      "group": "저평가·수급약세 (관망)",
+      "market_cap_rank": 3
+    },
+    {
+      "code": "373220",
+      "per": null,
+      "pbr": 3.47,
+      "name": "LG에너지솔루션",
+      "supply_value_sum": -41701490500.0,
+      "value_score": 25.0,
+      "supply_score": 60.0,
+      "total_score": 42.5,
+      "group": "고평가·수급강세 (주의)",
+      "market_cap_rank": 7
+    },
+    {
+      "code": "005930",
+      "per": 20.57,
+      "pbr": 3.54,
+      "name": "삼성전자",
+      "supply_value_sum": -13255386245500.0,
+      "value_score": 40.0,
+      "supply_score": 20.0,
+      "total_score": 30.0,
+      "group": "고평가·수급약세 (비추천)",
+      "market_cap_rank": 1
+    },
+    {
+      "code": "000660",
+      "per": 17.82,
+      "pbr": 7.76,
+      "name": "SK하이닉스",
+      "supply_value_sum": -22796508464000.0,
+      "value_score": 35.0,
+      "supply_score": 10.0,
+      "total_score": 22.5,
+      "group": "고평가·수급약세 (비추천)",
+      "market_cap_rank": 2
+    }
+  ],
+  "correlations": [
+    {
+      "code": "005380",
+      "n_days": 1,
+      "sentiment_return_corr": null,
+      "name": "현대차"
+    },
+    {
+      "code": "005935",
+      "n_days": 6,
+      "sentiment_return_corr": -0.1718900459,
+      "name": "삼성전자우"
+    },
+    {
+      "code": "009150",
+      "n_days": 1,
+      "sentiment_return_corr": null,
+      "name": "삼성전기"
+    },
+    {
+      "code": "032830",
+      "n_days": 27,
+      "sentiment_return_corr": 0.3119126941,
+      "name": "삼성생명"
+    },
+    {
+      "code": "105560",
+      "n_days": 17,
+      "sentiment_return_corr": -0.1093141846,
+      "name": "KB금융"
+    },
+    {
+      "code": "207940",
+      "n_days": 12,
+      "sentiment_return_corr": -0.4622341672,
+      "name": "삼성바이오로직스"
+    },
+    {
+      "code": "373220",
+      "n_days": 4,
+      "sentiment_return_corr": 0.6012009781,
+      "name": "LG에너지솔루션"
+    },
+    {
+      "code": "402340",
+      "n_days": 2,
+      "sentiment_return_corr": null,
+      "name": "SK스퀘어"
+    }
+  ],
+  "chart_files": [
+    "per_pbr_scatter_20260713_183341.png",
+    "total_score_bar_20260713_183341.png",
+    "sentiment_correlation_20260713_183341.png"
+  ],
+  "report_path": "C:\\Users\\user1\\Desktop\\Stock\\reports\\report_20260713_183341.md"
+}

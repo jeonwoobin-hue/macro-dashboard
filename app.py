@@ -3,6 +3,7 @@ import os
 from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
@@ -196,6 +197,27 @@ def get_news(date_str: str, top_n: int = 10) -> list[dict]:
     return fetch_top_economic_news(date_str, top_n=top_n)
 
 
+# 종목 심리분석 탭: stockanalyzer 패키지를 직접 import하지 않고 미리 계산된 결과 JSON만 읽는다.
+# stockanalyzer.report는 matplotlib을, analysis.sentiment는 kiwipiepy를 불러오는데 둘 다
+# 배포 런타임에는 넣지 않기로 했으므로(run_stock_pipeline.py로 로컬/CI에서만 갱신 — deploy_segfault_recurrence
+# 메모 참고), 여기서는 순수 json.load()로만 데이터를 가져온다.
+STOCK_GROUP_COLORS = {
+    "저평가·수급강세 (추천)": "#2e7d32",
+    "저평가·수급약세 (관망)": "#9e9e9e",
+    "고평가·수급강세 (주의)": "#f9a825",
+    "고평가·수급약세 (비추천)": "#c62828",
+}
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
+def get_stock_sentiment_data() -> dict | None:
+    path = os.path.join(os.path.dirname(__file__), "data", "latest_run.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def show_latest_metric(df: pd.DataFrame, col: str, label: str, suffix: str = "%"):
     latest = df.dropna(subset=[col]).iloc[-1]
     prev = df.dropna(subset=[col]).iloc[-2] if len(df.dropna(subset=[col])) > 1 else None
@@ -236,7 +258,9 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
         show_analysis_dialog(title, indicator_key, title, context, cache_key)
 
 
-TAB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "📰 뉴스"]
+TAB_LABELS = [
+    "📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "🗣️ 종목 심리분석", "📰 뉴스",
+]
 
 # st.tabs()는 화면에 안 보이는 탭이어도 매 rerun마다 안의 코드를 전부 실행해서,
 # 재배포 직후처럼 캐시가 비어있을 때 8개 탭 몫의 외부 API 호출(~20건)이 한 번에 몰리는
@@ -892,6 +916,108 @@ if active_tab == "🧠 인간지표":
         render_zoomable_chart(move, x="date", y="close", y_title="MOVE", key="move")
     except Exception as e:  # noqa: BLE001
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
+
+# ── 종목 심리분석 ──────────────────────────────────────────
+if active_tab == "🗣️ 종목 심리분석":
+    st.subheader("종목 심리분석")
+    st.caption(
+        "네이버 금융 시가총액 상위 종목을 PER·PBR 가치평가 + 외국인/기관 수급으로 그룹화하고, "
+        "종목토론실 여론(긍정/부정)이 실제 주가 수익률과 얼마나 일치하는지 분석합니다. "
+        "감성분석은 키워드 사전 매칭 방식이며, 수급 거래대금은 (순매매수량 × 종가) 추정치입니다."
+    )
+
+    stock_data = get_stock_sentiment_data()
+    if stock_data is None:
+        st.info(
+            "아직 생성된 분석 데이터가 없습니다. `python run_stock_pipeline.py`를 실행하면 "
+            "`data/latest_run.json`이 생성되어 표시됩니다."
+        )
+    else:
+        run_time = pd.to_datetime(stock_data["timestamp"]).strftime("%Y-%m-%d %H:%M")
+        st.caption(f"기준 시각: {run_time} (실시간이 아닌 주기적 배치 갱신 데이터입니다)")
+
+        rec_df = pd.DataFrame(stock_data["recommendations"])
+        corr_df = pd.DataFrame(stock_data["correlations"])
+
+        if rec_df.empty:
+            st.info("추천 데이터가 비어 있습니다.")
+        else:
+            GROUP_EMOJI = {
+                "저평가·수급강세 (추천)": "🟢",
+                "저평가·수급약세 (관망)": "⚪",
+                "고평가·수급강세 (주의)": "🟡",
+                "고평가·수급약세 (비추천)": "🔴",
+            }
+            rec_df = rec_df.sort_values("total_score", ascending=False).reset_index(drop=True)
+
+            st.markdown("**종목 추천 (가치평가 + 수급 그룹)**")
+            display_df = rec_df.assign(
+                그룹=rec_df["group"].map(lambda g: f"{GROUP_EMOJI.get(g, '')} {g}")
+            )[["name", "per", "pbr", "value_score", "supply_score", "total_score", "그룹"]].rename(
+                columns={
+                    "name": "종목명", "per": "PER", "pbr": "PBR",
+                    "value_score": "가치점수", "supply_score": "수급점수", "total_score": "종합점수",
+                }
+            )
+            st.dataframe(display_df, width="stretch", hide_index=True)
+
+            sc1, sc2 = st.columns(2)
+            with sc1:
+                st.markdown("**PER vs PBR (그룹별)**")
+                scatter = alt.Chart(rec_df).mark_circle(size=140, opacity=0.85).encode(
+                    x=alt.X("per:Q", title="PER (배)", scale=alt.Scale(zero=False)),
+                    y=alt.Y("pbr:Q", title="PBR (배)", scale=alt.Scale(zero=False)),
+                    color=alt.Color(
+                        "group:N", title="그룹",
+                        scale=alt.Scale(domain=list(STOCK_GROUP_COLORS.keys()), range=list(STOCK_GROUP_COLORS.values())),
+                        legend=alt.Legend(orient="bottom", columns=2),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("name:N", title="종목명"),
+                        alt.Tooltip("per:Q", title="PER", format=".2f"),
+                        alt.Tooltip("pbr:Q", title="PBR", format=".2f"),
+                        alt.Tooltip("total_score:Q", title="종합점수", format=".1f"),
+                    ],
+                ).properties(height=320)
+                st.altair_chart(scatter, width="stretch")
+            with sc2:
+                st.markdown("**종목별 종합 추천 점수**")
+                bar = alt.Chart(rec_df).mark_bar().encode(
+                    x=alt.X("total_score:Q", title="종합점수"),
+                    y=alt.Y("name:N", title="", sort="-x"),
+                    color=alt.Color(
+                        "group:N", title="그룹",
+                        scale=alt.Scale(domain=list(STOCK_GROUP_COLORS.keys()), range=list(STOCK_GROUP_COLORS.values())),
+                        legend=None,
+                    ),
+                    tooltip=[alt.Tooltip("name:N", title="종목명"), alt.Tooltip("total_score:Q", title="종합점수", format=".1f")],
+                ).properties(height=320)
+                st.altair_chart(bar, width="stretch")
+
+        st.divider()
+        st.markdown("**커뮤니티(종목토론실) 여론 vs 실제 수익률 상관관계**")
+        st.caption("양수(+)면 '긍정 여론일수록 실제로도 올랐다', 음수(-)면 여론과 실제 결과가 반대로 움직였다는 의미입니다.")
+        if corr_df.empty:
+            st.info("상관관계 데이터가 비어 있습니다.")
+        else:
+            corr_display = corr_df.rename(
+                columns={"name": "종목명", "n_days": "관측일수", "sentiment_return_corr": "상관계수"}
+            )[["종목명", "관측일수", "상관계수"]]
+            st.dataframe(corr_display, width="stretch", hide_index=True)
+
+            corr_valid = corr_df.dropna(subset=["sentiment_return_corr"])
+            if not corr_valid.empty:
+                corr_bar = alt.Chart(corr_valid).mark_bar().encode(
+                    x=alt.X("sentiment_return_corr:Q", title="상관계수 (여론 vs 익일 수익률)"),
+                    y=alt.Y("name:N", title="", sort="-x"),
+                    color=alt.condition(
+                        alt.datum.sentiment_return_corr >= 0, alt.value("#2e7d32"), alt.value("#c62828")
+                    ),
+                    tooltip=[alt.Tooltip("name:N", title="종목명"), alt.Tooltip("sentiment_return_corr:Q", title="상관계수", format=".2f")],
+                ).properties(height=280)
+                st.altair_chart(corr_bar, width="stretch")
+            else:
+                st.caption("관측일수가 부족해(종목당 3일 미만) 계산된 상관계수가 아직 없습니다. 데이터가 쌓일수록 채워집니다.")
 
 # ── 뉴스 ────────────────────────────────────────────────────
 if active_tab == "📰 뉴스":

@@ -1,0 +1,10 @@
+# run_stock_pipeline.py(종목 심리분석 데이터 갱신) 전용 의존성.
+# 메인 앱 requirements.txt에는 포함하지 않는다 — kiwipiepy/matplotlib은 이 프로젝트에서
+# 과거 Streamlit Cloud 배포 세그폴트를 일으켰던 것과 같은 카테고리(무거운 네이티브 패키지)라
+# 배포 런타임에는 절대 넣지 않고, 이 스크립트를 로컬/GitHub Actions에서 실행할 때만 설치한다.
+requests
+beautifulsoup4
+lxml
+pandas
+matplotlib
+kiwipiepy

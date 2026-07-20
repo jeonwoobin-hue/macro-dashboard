@@ -70,3 +70,9 @@
 - feat: 참고자료1 표에 WTI·BEI·신규실업수당청구건수 및 그 외 누락 지표(한국 경기종합지수, Fed 정책금리, 수익률곡선, 반도체 버블지수, Shiller PE, 버핏지수, VIX, MOVE, 시장 4지수, 인간지표, 뉴스) 전부 추가, "Nonfarm Payrolls" → "비농업 고용"으로 통일
 - fix: 참고자료1 표가 모바일에서 셀이 눌려 읽기 힘들던 문제 — 표를 가로 스크롤 컨테이너로 감싸 텍스트 줄바꿈 대신 스크롤되도록 수정
 - feat: 금리탭 차트에 한국은행 기준금리(ECOS `722Y001`/`0101000`, 진한 파란색) 라인 추가 — `ecos_client.fetch_ecos_monthly`가 stat_code를 인자로 받도록 일반화
+
+## 2026-07-20 (`feature/stock-sentiment-tab` 브랜치)
+
+- feat: 별도 프로젝트 SentiStock을 "🗣️ 종목 심리분석" 탭으로 통합 — 시가총액 상위 종목 PER·PBR+수급 추천 그룹표, PER/PBR 산점도, 종합점수 막대, 종목토론실 여론-익일수익률 상관관계를 Altair로 표시
+- feat: `stockanalyzer` 패키지(크롤러/분석/저장소 로직, Flask webapp·검색·비교·업종분석 기능 제외) 이식, `run_stock_pipeline.py`(로컬/CI 전용) + `requirements-stock.txt`(kiwipiepy/matplotlib, 메인 배포 의존성과 분리) + `update_stock_sentiment.yml`(매일 00:00 UTC 자동 갱신) 추가
+- 배포 앱(`app.py`)은 `stockanalyzer`를 import하지 않고 `data/latest_run.json`만 읽음 — kiwipiepy/matplotlib/flask를 배포 런타임에 넣지 않아 세그폴트 재발 리스크 회피(자세한 내용은 MEMORY.md "종목 심리분석 탭" 섹션)

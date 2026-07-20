@@ -74,6 +74,14 @@
     2. **발표주기 기반 캐시**: `CACHE_TTL_SECONDS`를 6시간→24시간으로 확대(FRED/ECOS/뉴스 — 대부분 월 1회/주 1회 발표라 하루 한 번 확인이면 충분). 시장 탭(KOSPI/KOSDAQ/Nasdaq/Dow)만 예외로 `market_cache_bucket()` 헬퍼로 "장중이면 시간 단위, 장마감/휴장 중이면 마지막 종가로 캐시 고정" — 공휴일 캘린더는 안 쓰고 요일+로컬 거래시간대 근사치만 사용(사용자 선택).
   - **아직 100% 확신은 아님** — 재배포 직후 콜드 캐시 부담을 줄이는 방향이 맞다는 정황은 확실하지만(순수 데이터 커밋에도 재발했으므로 의존성 버전 문제는 배제됨), 다음 재배포에서도 재발하는지로 최종 검증할 것. 만약 이후에도 재발하면 외부 요청 timeout 자체를 15초보다 짧게 줄이는 조치를 다음 후보로 고려.
 
+## 종목 심리분석 탭 (별도 프로젝트 SentiStock 통합)
+
+- **배경**: 사용자가 별도로 만든 개별종목 심리분석 프로젝트(`SentiStock.zip`)를 "종목 심리분석" 탭으로 추가해달라고 요청. 원본은 Flask 웹앱(`stockanalyzer/webapp/`) + SQLite DB + 네이버 금융 실시간 크롤러 + `kiwipiepy`(형태소 분석) + `matplotlib`(차트) 구조로, 이 대시보드(Streamlit)와 완전히 다른 프레임워크였음. 사용자가 "기존 버전 훼손 금지, 마음에 안 들면 원복"이라고 명시해서 `feature/stock-sentiment-tab` 브랜치에서 작업(머지 전까지 main 미변경).
+- **범위 결정**: 전체 기능(종목 검색/비교/업종분석/실시간 재크롤링 버튼)이 아니라 **핵심 결과만 표시**하는 쪽으로 사용자가 선택. 이유: `kiwipiepy`를 배포 런타임에 추가하면 [[deploy_segfault_recurrence]]에서 5번 겪은 것과 같은 카테고리(무거운 네이티브 패키지)의 리스크를 새로 짊어지게 됨.
+- **아키텍처**: `app.py`는 `stockanalyzer` 패키지를 **import하지 않고** `data/latest_run.json`(사전 계산된 결과)만 `json.load()`로 읽는다. 크롤링·감성분석(`kiwipiepy` 사용)·추천/상관관계 계산은 전부 `run_stock_pipeline.py`(로컬/CI 전용, 배포 런타임에서 절대 실행 안 됨)가 담당하고 `requirements-stock.txt`(kiwipiepy/matplotlib 포함, 메인 `requirements.txt`에는 없음)로 별도 설치. 매일 `update_stock_sentiment.yml`(GH Actions, 기존 감성데이터 갱신과 1시간 띄운 00:00 UTC)이 이 스크립트를 돌려 `data/latest_run.json`/`data/stock_data.db`를 커밋 — [[gemini_ai_interpretation_feature]]의 AI해석 캐시 사전생성과 동일한 패턴("무거운/네이티브 작업은 오프라인에서, 배포 앱은 결과만 읽기").
+- **원본에서 가져온 것**: `stockanalyzer/{config,storage,report,main}.py`, `analysis/{sentiment,recommend,correlate}.py`, `crawler/{common,community,fundamentals,market_cap,price,supply_demand}.py`. **제외한 것**: `webapp/`(Flask 전용), `compare_state.py`/`sector_state.py`/`universe.py`(검색·비교·업종분석 — 범위 밖), `crawler/sector.py`/`news.py`, `scripts/`(사전 확장용 오프라인 도구).
+- **주의할 것**: `report.py`는 모듈 최상단에서 `matplotlib`을 import한다 — `app.py`에서 절대 `from stockanalyzer import report`를 하면 안 됨(배포 런타임에 matplotlib이 딸려 들어와서 세그폴트 재발 위험). `GROUP_COLORS`처럼 report.py에 있는 작은 상수가 필요하면 app.py에 직접 복제(`STOCK_GROUP_COLORS`)해서 쓸 것 — 이미 그렇게 해둠.
+
 ## 미해결/다음에 고려할 것
 
 - `zoom_chart` 함수명이 기능과 안 맞음(브러시 제거 후에도 이름 유지 중). 다음에 대규모로 손댈 일이 생기면 이름 정리 고려.
