@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-07-20T23:21:05",
+  "days": 1,
+  "results": [
+    {
+      "code": "005930",
+      "name": "삼성전자",
+      "per": 19.72,
+      "pbr": 3.39,
+      "price_now": 244000.0,
+      "price_change_pct": 0.0,
+      "window_days": 1,
+      "covered_full_window": false,
+      "sentiment_majority": "긍정",
+      "price_direction": "보합",
+      "match": null,
+      "total_posts": 2000,
+      "pos_count": 201,
+      "neg_count": 154,
+      "neutral_count": 1645,
+      "pos_ratio": 10.1,
+      "neg_ratio": 7.7,
+      "news_covered_full_window": true,
+      "news_total_posts": 974,
+      "news_pos_count": 79,
+      "news_neg_count": 239,
+      "news_neutral_count": 656,
+      "news_pos_ratio": 8.1,
+      "news_neg_ratio": 24.5
+    }
+  ]
+}

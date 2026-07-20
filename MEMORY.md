@@ -82,6 +82,28 @@
 - **원본에서 가져온 것**: `stockanalyzer/{config,storage,report,main}.py`, `analysis/{sentiment,recommend,correlate}.py`, `crawler/{common,community,fundamentals,market_cap,price,supply_demand}.py`. **제외한 것**: `webapp/`(Flask 전용), `compare_state.py`/`sector_state.py`/`universe.py`(검색·비교·업종분석 — 범위 밖), `crawler/sector.py`/`news.py`, `scripts/`(사전 확장용 오프라인 도구).
 - **주의할 것**: `report.py`는 모듈 최상단에서 `matplotlib`을 import한다 — `app.py`에서 절대 `from stockanalyzer import report`를 하면 안 됨(배포 런타임에 matplotlib이 딸려 들어와서 세그폴트 재발 위험). `GROUP_COLORS`처럼 report.py에 있는 작은 상수가 필요하면 app.py에 직접 복제(`STOCK_GROUP_COLORS`)해서 쓸 것 — 이미 그렇게 해둠.
 
+**2026-07-20, "전체 기능 이식"으로 확장**: 사용자가 위 MVP(핵심 결과만 표시)로는 부족하다며 원본의
+검색·비교·업종분석·"지금 다시 분석" 실시간 트리거까지 전부 요청. 이번엔 `kiwipiepy`를 메인
+`requirements.txt`에도 추가(라이브 검색/비교/업종분석이 배포 앱에서 직접 크롤링+감성분석을 돌려야
+해서 불가피 — 사용자에게 리스크 고지 후 진행). 다만 **함수 내부에서 지연 import**하는 패턴을
+지켰다: `app.py` 최상단이 아니라 각 버튼의 `if st.button(...):` 블록 안에서만
+`from stockanalyzer.live import ...` 등을 import하므로, 실제로 버튼을 누르기 전까지는 kiwipiepy가
+로드되지 않는다(모든 방문자가 매 rerun마다 로드하는 게 아님). `stockanalyzer/live.py`를 새로
+만들어 main.py의 run_pipeline()을 report.py(matplotlib) 없이 재구현했고, `sector_recommend.py`도
+원본의 `report.plot_*` 호출을 제거했다 — "지금 다시 분석"/업종분석 라이브 경로에서도 matplotlib은
+여전히 안 들어온다.
+
+로컬에서 실제로 다 돌려봄(전체 상장종목 목록 만들기 → 삼성전자 검색·비교분석 1일 실행) — 정상
+동작 확인. 단, **중요한 트레이드오프 하나 발견**: Streamlit은 스크립트 실행이 동기적이라, 이
+라이브 크롤링(특히 인기 종목 비교/전체 재분석)이 도는 동안 **같은 컨테이너의 다른 방문자 세션도
+전부 멈춘다**(`/_stcore/health` 폴링조차 응답 못 받는 걸 콘솔에서 확인). 원본 Flask 버전은 정확히
+이 문제를 피하려고 백그라운드 스레드+폴링 구조를 썼는데, Streamlit으로 옮기며 구현을 단순화하려고
+동기 블로킹(`st.status`)으로 대체하면서 그 이점을 잃었다. 삼성전자처럼 게시글이 아주 많은 종목은
+1일 비교조차 max_pages(1000페이지) 안에서 기간을 다 못 채울 정도로 오래 걸림(`covered_full_window:
+false`로 표시됨) — 이런 경우 몇 분간 앱 전체가 멈출 수 있다. 병목을 없애려면 `threading` +
+`st.session_state` + `st.fragment(run_every=...)` 폴링으로 다시 비동기화해야 하는데, 아직 안 함
+(사용자에게 필요성 확인 후 진행 예정).
+
 ## 미해결/다음에 고려할 것
 
 - `zoom_chart` 함수명이 기능과 안 맞음(브러시 제거 후에도 이름 유지 중). 다음에 대규모로 손댈 일이 생기면 이름 정리 고려.

@@ -76,3 +76,5 @@
 - feat: 별도 프로젝트 SentiStock을 "🗣️ 종목 심리분석" 탭으로 통합 — 시가총액 상위 종목 PER·PBR+수급 추천 그룹표, PER/PBR 산점도, 종합점수 막대, 종목토론실 여론-익일수익률 상관관계를 Altair로 표시
 - feat: `stockanalyzer` 패키지(크롤러/분석/저장소 로직, Flask webapp·검색·비교·업종분석 기능 제외) 이식, `run_stock_pipeline.py`(로컬/CI 전용) + `requirements-stock.txt`(kiwipiepy/matplotlib, 메인 배포 의존성과 분리) + `update_stock_sentiment.yml`(매일 00:00 UTC 자동 갱신) 추가
 - 배포 앱(`app.py`)은 `stockanalyzer`를 import하지 않고 `data/latest_run.json`만 읽음 — kiwipiepy/matplotlib/flask를 배포 런타임에 넣지 않아 세그폴트 재발 리스크 회피(자세한 내용은 MEMORY.md "종목 심리분석 탭" 섹션)
+- feat: "전체 기능 이식"으로 확장 — 종목 검색·비교(최대 6종목, 1/3/7/30일 여론 vs 실제 수익률), 업종분석(14개 업종 그룹, 거래대금 상위 종목), "🔄 지금 다시 분석"(시총 상위 10종목 즉시 재크롤링) 실시간 트리거 추가. kiwipiepy를 메인 `requirements.txt`에도 추가했지만 각 버튼 클릭 핸들러 안에서만 지연 import해서 실제 클릭 전엔 로드되지 않게 함. `stockanalyzer/live.py` 신설(main.py의 run_pipeline을 matplotlib 없이 재구현), `sector_recommend.py`에서 report.py 차트 생성 제거
+- 로컬 실측 검증 완료(전체 상장종목 크롤링 → 종목 검색·비교 실행, 정상 동작). **알려진 트레이드오프**: Streamlit 동기 실행 모델 때문에 라이브 크롤링 중엔 같은 컨테이너의 다른 방문자 세션도 함께 멈춤(원본 Flask는 백그라운드 스레드+폴링으로 이 문제를 피했으나, 이식하며 단순화하는 과정에서 잃음) — 인기 종목은 수 분씩 걸릴 수 있음. 스레드 기반 비동기화는 아직 미적용

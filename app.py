@@ -197,25 +197,46 @@ def get_news(date_str: str, top_n: int = 10) -> list[dict]:
     return fetch_top_economic_news(date_str, top_n=top_n)
 
 
-# 종목 심리분석 탭: stockanalyzer 패키지를 직접 import하지 않고 미리 계산된 결과 JSON만 읽는다.
-# stockanalyzer.report는 matplotlib을, analysis.sentiment는 kiwipiepy를 불러오는데 둘 다
-# 배포 런타임에는 넣지 않기로 했으므로(run_stock_pipeline.py로 로컬/CI에서만 갱신 — deploy_segfault_recurrence
-# 메모 참고), 여기서는 순수 json.load()로만 데이터를 가져온다.
+# 종목 심리분석 탭: 배치로 미리 계산된 결과(data/*.json)는 순수 json.load()로만 읽어서 이 탭을
+# 열기만 해도 항상 즉시 표시되게 한다. "지금 다시 분석"/"비교분석"/"업종분석" 버튼을 실제로 눌렀을
+# 때만 stockanalyzer.{live,analysis.compare,analysis.sector_recommend,crawler.*}를 함수 내부에서
+# 지연 import한다 — kiwipiepy(형태소분석)가 이 경로에서 로드되는데, 매 페이지 로드/rerun마다 무조건
+# 불러오면 배포 런타임 기동 비용·리스크가 계속 붙으므로 실제 클릭 시점까지 미룬다.
 STOCK_GROUP_COLORS = {
     "저평가·수급강세 (추천)": "#2e7d32",
     "저평가·수급약세 (관망)": "#9e9e9e",
     "고평가·수급강세 (주의)": "#f9a825",
     "고평가·수급약세 (비추천)": "#c62828",
 }
+STOCK_GROUP_EMOJI = {
+    "저평가·수급강세 (추천)": "🟢",
+    "저평가·수급약세 (관망)": "⚪",
+    "고평가·수급강세 (주의)": "🟡",
+    "고평가·수급약세 (비추천)": "🔴",
+}
 
 
-@st.cache_data(ttl=CACHE_TTL_SECONDS)
-def get_stock_sentiment_data() -> dict | None:
-    path = os.path.join(os.path.dirname(__file__), "data", "latest_run.json")
+def _load_stock_json(filename: str) -> dict | None:
+    path = os.path.join(os.path.dirname(__file__), "data", filename)
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
+def get_stock_sentiment_data() -> dict | None:
+    return _load_stock_json("latest_run.json")
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
+def get_stock_compare_data() -> dict | None:
+    return _load_stock_json("latest_compare.json")
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
+def get_stock_sector_data() -> dict | None:
+    return _load_stock_json("latest_sector.json")
 
 
 def show_latest_metric(df: pd.DataFrame, col: str, label: str, suffix: str = "%"):
@@ -926,15 +947,30 @@ if active_tab == "🗣️ 종목 심리분석":
         "감성분석은 키워드 사전 매칭 방식이며, 수급 거래대금은 (순매매수량 × 종가) 추정치입니다."
     )
 
+    if st.button("🔄 지금 다시 분석 (시가총액 상위 10종목)", key="stock_live_rerun"):
+        with st.status("네이버 금융에서 실시간으로 수집 중...", expanded=True) as status:
+            try:
+                from stockanalyzer.live import run_pipeline_live
+
+                result = run_pipeline_live(log=status.write)
+                data_path = os.path.join(os.path.dirname(__file__), "data", "latest_run.json")
+                with open(data_path, "w", encoding="utf-8") as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+                get_stock_sentiment_data.clear()
+                status.update(label="완료", state="complete")
+            except Exception as e:  # noqa: BLE001
+                status.update(label=f"실패: {e}", state="error")
+        st.rerun()
+
     stock_data = get_stock_sentiment_data()
     if stock_data is None:
         st.info(
-            "아직 생성된 분석 데이터가 없습니다. `python run_stock_pipeline.py`를 실행하면 "
-            "`data/latest_run.json`이 생성되어 표시됩니다."
+            "아직 생성된 분석 데이터가 없습니다. `python run_stock_pipeline.py`를 실행하거나 "
+            "위 '지금 다시 분석' 버튼을 누르면 표시됩니다."
         )
     else:
         run_time = pd.to_datetime(stock_data["timestamp"]).strftime("%Y-%m-%d %H:%M")
-        st.caption(f"기준 시각: {run_time} (실시간이 아닌 주기적 배치 갱신 데이터입니다)")
+        st.caption(f"기준 시각: {run_time} · 주기적 배치 갱신 데이터이며, 위 버튼으로 즉시 재수집할 수도 있습니다.")
 
         rec_df = pd.DataFrame(stock_data["recommendations"])
         corr_df = pd.DataFrame(stock_data["correlations"])
@@ -942,17 +978,11 @@ if active_tab == "🗣️ 종목 심리분석":
         if rec_df.empty:
             st.info("추천 데이터가 비어 있습니다.")
         else:
-            GROUP_EMOJI = {
-                "저평가·수급강세 (추천)": "🟢",
-                "저평가·수급약세 (관망)": "⚪",
-                "고평가·수급강세 (주의)": "🟡",
-                "고평가·수급약세 (비추천)": "🔴",
-            }
             rec_df = rec_df.sort_values("total_score", ascending=False).reset_index(drop=True)
 
             st.markdown("**종목 추천 (가치평가 + 수급 그룹)**")
             display_df = rec_df.assign(
-                그룹=rec_df["group"].map(lambda g: f"{GROUP_EMOJI.get(g, '')} {g}")
+                그룹=rec_df["group"].map(lambda g: f"{STOCK_GROUP_EMOJI.get(g, '')} {g}")
             )[["name", "per", "pbr", "value_score", "supply_score", "total_score", "그룹"]].rename(
                 columns={
                     "name": "종목명", "per": "PER", "pbr": "PBR",
@@ -1018,6 +1048,120 @@ if active_tab == "🗣️ 종목 심리분석":
                 st.altair_chart(corr_bar, width="stretch")
             else:
                 st.caption("관측일수가 부족해(종목당 3일 미만) 계산된 상관계수가 아직 없습니다. 데이터가 쌓일수록 채워집니다.")
+
+    st.divider()
+    st.markdown("**🔍 종목 검색·비교**")
+    st.caption("원하는 종목을 최대 6개 골라 기간 전체 여론(긍정/부정) 우세 방향과 실제 등락 방향이 맞았는지 비교합니다. 실시간 크롤링이라 종목·기간에 따라 시간이 걸릴 수 있습니다.")
+    with st.expander("펼치기", expanded=False):
+        universe = _load_stock_json("stock_universe.json")
+        if universe is None:
+            st.caption("종목 검색용 전체 상장목록이 아직 없습니다. 아래 버튼으로 한 번 만들어두면(코스피+코스닥 전종목, 1~2분) 이후 검색이 즉시 됩니다.")
+            if st.button("전체 상장종목 목록 만들기", key="build_universe"):
+                with st.status("코스피·코스닥 전 종목 조회 중...", expanded=True) as status:
+                    try:
+                        from stockanalyzer.crawler.market_cap import fetch_all_listed_stocks
+
+                        stocks = fetch_all_listed_stocks(log=status.write)
+                        universe_path = os.path.join(os.path.dirname(__file__), "data", "stock_universe.json")
+                        with open(universe_path, "w", encoding="utf-8") as f:
+                            json.dump({"updated_at": datetime.now().isoformat(timespec="seconds"), "stocks": stocks}, f, ensure_ascii=False)
+                        status.update(label=f"완료: 총 {len(stocks)}종목", state="complete")
+                    except Exception as e:  # noqa: BLE001
+                        status.update(label=f"실패: {e}", state="error")
+                st.rerun()
+        else:
+            query = st.text_input("종목명 또는 코드 검색", key="stock_search_query")
+            matches = []
+            if query:
+                q = query.strip().lower()
+                matches = [s for s in universe["stocks"] if q in s["name"].lower() or q in s["code"]]
+                matches.sort(key=lambda s: (not s["name"].lower().startswith(q), s["name"]))
+                matches = matches[:15]
+            options = {f"{s['name']} ({s['code']})": s for s in matches}
+            selected_labels = st.multiselect(
+                "비교할 종목 선택 (최대 6개)", list(options.keys()), max_selections=6, key="stock_compare_select"
+            )
+            window_days = st.radio(
+                "비교 기간", [1, 3, 7, 30], horizontal=True, format_func=lambda d: f"최근 {d}일", key="stock_compare_days"
+            )
+            if st.button("비교분석 시작", key="stock_compare_run", disabled=not selected_labels):
+                picked = [options[label] for label in selected_labels]
+                with st.status(f"{len(picked)}개 종목 비교분석 중... (최근 {window_days}일)", expanded=True) as status:
+                    try:
+                        from stockanalyzer.analysis.compare import analyze_stock_window
+
+                        results = []
+                        for s in picked:
+                            status.write(f"{s['name']} ({s['code']}) 분석 중...")
+                            results.append(analyze_stock_window(s["code"], s["name"], days=window_days))
+                        compare_payload = {
+                            "timestamp": datetime.now().isoformat(timespec="seconds"),
+                            "days": window_days,
+                            "results": results,
+                        }
+                        compare_path = os.path.join(os.path.dirname(__file__), "data", "latest_compare.json")
+                        with open(compare_path, "w", encoding="utf-8") as f:
+                            json.dump(compare_payload, f, ensure_ascii=False, indent=2)
+                        get_stock_compare_data.clear()
+                        status.update(label="완료", state="complete")
+                    except Exception as e:  # noqa: BLE001
+                        status.update(label=f"실패: {e}", state="error")
+                st.rerun()
+
+            compare_result = get_stock_compare_data()
+            if compare_result and compare_result.get("results"):
+                st.caption(f"기준: 최근 {compare_result['days']}일 · {pd.to_datetime(compare_result['timestamp']).strftime('%Y-%m-%d %H:%M')}")
+                cdf = pd.DataFrame(compare_result["results"])
+                cdf_display = cdf.assign(
+                    일치=cdf["match"].map({True: "✅ 일치", False: "❌ 불일치", None: "—"})
+                )[[
+                    "name", "per", "pbr", "price_now", "price_change_pct",
+                    "pos_count", "neg_count", "sentiment_majority", "price_direction", "일치",
+                ]].rename(columns={
+                    "name": "종목명", "per": "PER", "pbr": "PBR", "price_now": "현재가",
+                    "price_change_pct": "기간등락률(%)", "pos_count": "긍정글", "neg_count": "부정글",
+                    "sentiment_majority": "여론", "price_direction": "실제방향",
+                })
+                st.dataframe(cdf_display, width="stretch", hide_index=True)
+
+    st.divider()
+    st.markdown("**🏭 업종분석**")
+    st.caption("선택한 업종의 거래대금 상위 종목을 PER·PBR 가치평가 + 수급으로 그룹화합니다. 실시간 크롤링(최대 30종목)이라 다소 걸릴 수 있습니다.")
+    with st.expander("펼치기", expanded=False):
+        from stockanalyzer.crawler.sector import BROAD_SECTOR_GROUPS
+
+        sector_name = st.selectbox("업종 선택", list(BROAD_SECTOR_GROUPS.keys()), key="sector_select")
+        if st.button("업종분석 시작", key="sector_run"):
+            with st.status(f"'{sector_name}' 업종 분석 중...", expanded=True) as status:
+                try:
+                    from stockanalyzer.analysis.sector_recommend import analyze_sector
+
+                    result = analyze_sector(sector_name, log=status.write)
+                    result["timestamp"] = datetime.now().isoformat(timespec="seconds")
+                    sector_path = os.path.join(os.path.dirname(__file__), "data", "latest_sector.json")
+                    with open(sector_path, "w", encoding="utf-8") as f:
+                        json.dump(result, f, ensure_ascii=False, indent=2)
+                    get_stock_sector_data.clear()
+                    status.update(label="완료", state="complete")
+                except Exception as e:  # noqa: BLE001
+                    status.update(label=f"실패: {e}", state="error")
+            st.rerun()
+
+        sector_result = get_stock_sector_data()
+        if sector_result and sector_result.get("recommendations"):
+            st.caption(
+                f"'{sector_result['sector_name']}' 업종 {sector_result['total_in_sector']}종목 중 "
+                f"거래대금 상위 {sector_result['analyzed_count']}종목 분석 · "
+                f"{pd.to_datetime(sector_result['timestamp']).strftime('%Y-%m-%d %H:%M')}"
+            )
+            sdf = pd.DataFrame(sector_result["recommendations"]).sort_values("total_score", ascending=False)
+            sdf_display = sdf.assign(
+                그룹=sdf["group"].map(lambda g: f"{STOCK_GROUP_EMOJI.get(g, '')} {g}")
+            )[["name", "per", "pbr", "value_score", "supply_score", "total_score", "그룹"]].rename(columns={
+                "name": "종목명", "per": "PER", "pbr": "PBR",
+                "value_score": "가치점수", "supply_score": "수급점수", "total_score": "종합점수",
+            })
+            st.dataframe(sdf_display, width="stretch", hide_index=True)
 
 # ── 뉴스 ────────────────────────────────────────────────────
 if active_tab == "📰 뉴스":
