@@ -239,6 +239,61 @@ def get_stock_sector_data() -> dict | None:
     return _load_stock_json("latest_sector.json")
 
 
+def _render_async_job_status(job, prev_key: str, running_label: str, on_first_done=None):
+    """4개(파이프라인/비교/업종/전종목목록) 라이브 작업이 공통으로 쓰는 폴링 상태 표시.
+    job은 stockanalyzer.jobs의 AsyncJob 인스턴스 — 이 모듈은 kiwipiepy 등 무거운 걸 전혀
+    import하지 않으므로, 탭을 열 때마다(버튼을 누르기 전부터) 매 2초 폴링해도 안전하다."""
+    status = job.status()
+    prev_status = st.session_state.get(prev_key, "idle")
+    st.session_state[prev_key] = status["status"]
+
+    if status["status"] == "running":
+        st.info(f"🔄 {running_label}")
+        for line in status["logs"][-8:]:
+            st.caption(line)
+    elif status["status"] == "error":
+        st.error(f"실패: {status['error']}")
+    elif status["status"] == "done" and prev_status == "running":
+        if on_first_done:
+            on_first_done()
+        st.rerun()
+
+
+@st.fragment(run_every=2)
+def render_pipeline_job_status():
+    from stockanalyzer.jobs import pipeline_job
+
+    _render_async_job_status(
+        pipeline_job, "_pipeline_job_status", "시가총액 상위 10종목 실시간 수집 중...",
+        on_first_done=get_stock_sentiment_data.clear,
+    )
+
+
+@st.fragment(run_every=2)
+def render_universe_job_status():
+    from stockanalyzer.jobs import universe_job
+
+    _render_async_job_status(universe_job, "_universe_job_status", "코스피·코스닥 전 종목 조회 중...")
+
+
+@st.fragment(run_every=2)
+def render_compare_job_status():
+    from stockanalyzer.jobs import compare_job
+
+    _render_async_job_status(
+        compare_job, "_compare_job_status", "비교분석 중...", on_first_done=get_stock_compare_data.clear
+    )
+
+
+@st.fragment(run_every=2)
+def render_sector_job_status():
+    from stockanalyzer.jobs import sector_job
+
+    _render_async_job_status(
+        sector_job, "_sector_job_status", "업종분석 중...", on_first_done=get_stock_sector_data.clear
+    )
+
+
 def show_latest_metric(df: pd.DataFrame, col: str, label: str, suffix: str = "%"):
     latest = df.dropna(subset=[col]).iloc[-1]
     prev = df.dropna(subset=[col]).iloc[-2] if len(df.dropna(subset=[col])) > 1 else None
@@ -947,20 +1002,14 @@ if active_tab == "🗣️ 종목 심리분석":
         "감성분석은 키워드 사전 매칭 방식이며, 수급 거래대금은 (순매매수량 × 종가) 추정치입니다."
     )
 
-    if st.button("🔄 지금 다시 분석 (시가총액 상위 10종목)", key="stock_live_rerun"):
-        with st.status("네이버 금융에서 실시간으로 수집 중...", expanded=True) as status:
-            try:
-                from stockanalyzer.live import run_pipeline_live
+    from stockanalyzer.jobs import pipeline_job
 
-                result = run_pipeline_live(log=status.write)
-                data_path = os.path.join(os.path.dirname(__file__), "data", "latest_run.json")
-                with open(data_path, "w", encoding="utf-8") as f:
-                    json.dump(result, f, ensure_ascii=False, indent=2)
-                get_stock_sentiment_data.clear()
-                status.update(label="완료", state="complete")
-            except Exception as e:  # noqa: BLE001
-                status.update(label=f"실패: {e}", state="error")
-        st.rerun()
+    if st.button("🔄 지금 다시 분석 (시가총액 상위 10종목)", key="stock_live_rerun", disabled=pipeline_job.status()["status"] == "running"):
+        from stockanalyzer.live import run_pipeline_and_save
+
+        if not pipeline_job.start(run_pipeline_and_save, pipeline_job.log):
+            st.warning("이미 실행 중입니다.")
+    render_pipeline_job_status()
 
     stock_data = get_stock_sentiment_data()
     if stock_data is None:
@@ -1055,20 +1104,15 @@ if active_tab == "🗣️ 종목 심리분석":
     with st.expander("펼치기", expanded=False):
         universe = _load_stock_json("stock_universe.json")
         if universe is None:
-            st.caption("종목 검색용 전체 상장목록이 아직 없습니다. 아래 버튼으로 한 번 만들어두면(코스피+코스닥 전종목, 1~2분) 이후 검색이 즉시 됩니다.")
-            if st.button("전체 상장종목 목록 만들기", key="build_universe"):
-                with st.status("코스피·코스닥 전 종목 조회 중...", expanded=True) as status:
-                    try:
-                        from stockanalyzer.crawler.market_cap import fetch_all_listed_stocks
+            from stockanalyzer.jobs import universe_job
 
-                        stocks = fetch_all_listed_stocks(log=status.write)
-                        universe_path = os.path.join(os.path.dirname(__file__), "data", "stock_universe.json")
-                        with open(universe_path, "w", encoding="utf-8") as f:
-                            json.dump({"updated_at": datetime.now().isoformat(timespec="seconds"), "stocks": stocks}, f, ensure_ascii=False)
-                        status.update(label=f"완료: 총 {len(stocks)}종목", state="complete")
-                    except Exception as e:  # noqa: BLE001
-                        status.update(label=f"실패: {e}", state="error")
-                st.rerun()
+            st.caption("종목 검색용 전체 상장목록이 아직 없습니다. 아래 버튼으로 한 번 만들어두면(코스피+코스닥 전종목, 1~2분) 이후 검색이 즉시 됩니다.")
+            if st.button("전체 상장종목 목록 만들기", key="build_universe", disabled=universe_job.status()["status"] == "running"):
+                from stockanalyzer.live import build_universe_and_save
+
+                if not universe_job.start(build_universe_and_save, universe_job.log):
+                    st.warning("이미 실행 중입니다.")
+            render_universe_job_status()
         else:
             query = st.text_input("종목명 또는 코드 검색", key="stock_search_query")
             matches = []
@@ -1084,29 +1128,18 @@ if active_tab == "🗣️ 종목 심리분석":
             window_days = st.radio(
                 "비교 기간", [1, 3, 7, 30], horizontal=True, format_func=lambda d: f"최근 {d}일", key="stock_compare_days"
             )
-            if st.button("비교분석 시작", key="stock_compare_run", disabled=not selected_labels):
-                picked = [options[label] for label in selected_labels]
-                with st.status(f"{len(picked)}개 종목 비교분석 중... (최근 {window_days}일)", expanded=True) as status:
-                    try:
-                        from stockanalyzer.analysis.compare import analyze_stock_window
+            from stockanalyzer.jobs import compare_job
 
-                        results = []
-                        for s in picked:
-                            status.write(f"{s['name']} ({s['code']}) 분석 중...")
-                            results.append(analyze_stock_window(s["code"], s["name"], days=window_days))
-                        compare_payload = {
-                            "timestamp": datetime.now().isoformat(timespec="seconds"),
-                            "days": window_days,
-                            "results": results,
-                        }
-                        compare_path = os.path.join(os.path.dirname(__file__), "data", "latest_compare.json")
-                        with open(compare_path, "w", encoding="utf-8") as f:
-                            json.dump(compare_payload, f, ensure_ascii=False, indent=2)
-                        get_stock_compare_data.clear()
-                        status.update(label="완료", state="complete")
-                    except Exception as e:  # noqa: BLE001
-                        status.update(label=f"실패: {e}", state="error")
-                st.rerun()
+            if st.button(
+                "비교분석 시작", key="stock_compare_run",
+                disabled=not selected_labels or compare_job.status()["status"] == "running",
+            ):
+                from stockanalyzer.live import run_compare_and_save
+
+                picked = [options[label] for label in selected_labels]
+                if not compare_job.start(run_compare_and_save, picked, window_days, compare_job.log):
+                    st.warning("이미 다른 비교분석이 실행 중입니다. 잠시 후 다시 시도해주세요.")
+            render_compare_job_status()
 
             compare_result = get_stock_compare_data()
             if compare_result and compare_result.get("results"):
@@ -1131,21 +1164,15 @@ if active_tab == "🗣️ 종목 심리분석":
         from stockanalyzer.crawler.sector import BROAD_SECTOR_GROUPS
 
         sector_name = st.selectbox("업종 선택", list(BROAD_SECTOR_GROUPS.keys()), key="sector_select")
-        if st.button("업종분석 시작", key="sector_run"):
-            with st.status(f"'{sector_name}' 업종 분석 중...", expanded=True) as status:
-                try:
-                    from stockanalyzer.analysis.sector_recommend import analyze_sector
 
-                    result = analyze_sector(sector_name, log=status.write)
-                    result["timestamp"] = datetime.now().isoformat(timespec="seconds")
-                    sector_path = os.path.join(os.path.dirname(__file__), "data", "latest_sector.json")
-                    with open(sector_path, "w", encoding="utf-8") as f:
-                        json.dump(result, f, ensure_ascii=False, indent=2)
-                    get_stock_sector_data.clear()
-                    status.update(label="완료", state="complete")
-                except Exception as e:  # noqa: BLE001
-                    status.update(label=f"실패: {e}", state="error")
-            st.rerun()
+        from stockanalyzer.jobs import sector_job
+
+        if st.button("업종분석 시작", key="sector_run", disabled=sector_job.status()["status"] == "running"):
+            from stockanalyzer.live import run_sector_and_save
+
+            if not sector_job.start(run_sector_and_save, sector_name, sector_job.log):
+                st.warning("이미 다른 업종분석이 실행 중입니다. 잠시 후 다시 시도해주세요.")
+        render_sector_job_status()
 
         sector_result = get_stock_sector_data()
         if sector_result and sector_result.get("recommendations"):

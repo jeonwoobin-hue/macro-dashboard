@@ -1,11 +1,15 @@
-"""배포된 Streamlit 앱에서 사용자가 직접 "지금 다시 분석" 버튼을 눌렀을 때 실행되는 라이브 파이프라인.
+"""배포된 Streamlit 앱에서 사용자가 직접 트리거하는 라이브 분석("지금 다시 분석"/"비교분석"/
+"업종분석")이 실행되는 곳. 셋 다 stockanalyzer.async_job.AsyncJob으로 백그라운드 스레드에서
+돌아가고, app.py의 폴링 프래그먼트가 진행 상황을 읽어 화면에 표시한다 — 버튼 클릭 핸들러에서
+직접 블로킹 호출하면 그동안 같은 서버의 다른 방문자도 멈추기 때문(MEMORY.md 참고).
 
-main.py의 run_pipeline()과 크롤링·분석 로직은 동일하지만, `from stockanalyzer import report`
-(matplotlib 차트/마크다운 리포트 생성) 단계는 뺐다 — app.py는 결과를 Altair로 직접 그리므로
-필요 없고, 배포 런타임에 matplotlib을 새로 들여오지 않기 위함이다(MEMORY.md "종목 심리분석 탭"
-섹션 참고). 오프라인/CI 갱신(run_stock_pipeline.py)은 계속 main.py의 원본 run_pipeline()을 쓴다.
+run_pipeline_live()는 main.py의 run_pipeline()과 크롤링·분석 로직은 동일하지만,
+`from stockanalyzer import report`(matplotlib 차트/마크다운 리포트 생성) 단계는 뺐다 — app.py는
+결과를 Altair로 직접 그리므로 필요 없고, 배포 런타임에 matplotlib을 새로 들여오지 않기 위함이다.
+오프라인/CI 갱신(run_stock_pipeline.py)은 계속 main.py의 원본 run_pipeline()을 쓴다.
 """
 import json
+import os
 from datetime import datetime
 
 import pandas as pd
@@ -13,7 +17,7 @@ import pandas as pd
 from stockanalyzer.analysis.correlate import build_sentiment_return_table, compute_correlation_by_stock
 from stockanalyzer.analysis.recommend import build_value_supply_table
 from stockanalyzer.analysis.sentiment import score_posts
-from stockanalyzer.config import BOARD_PAGES, PRICE_HISTORY_PAGES, SUPPLY_DEMAND_PAGES, TOP_N_STOCKS
+from stockanalyzer.config import BOARD_PAGES, DATA_DIR, PRICE_HISTORY_PAGES, SUPPLY_DEMAND_PAGES, TOP_N_STOCKS
 from stockanalyzer.crawler.community import fetch_board_posts
 from stockanalyzer.crawler.fundamentals import fetch_per_pbr
 from stockanalyzer.crawler.market_cap import fetch_top_market_cap
@@ -119,3 +123,52 @@ def run_pipeline_live(log=print) -> dict:
         "recommendations": _records(rec_df),
         "correlations": _records(corr_df),
     }
+
+
+def run_pipeline_and_save(log) -> None:
+    """pipeline_job.start(run_pipeline_and_save, pipeline_job.log)로 백그라운드 스레드에서 호출된다."""
+    result = run_pipeline_live(log=log)
+    path = os.path.join(DATA_DIR, "latest_run.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+
+def run_compare_and_save(stocks: list, days: int, log) -> None:
+    """compare_job.start(run_compare_and_save, picked_stocks, window_days, compare_job.log)로 호출된다."""
+    from stockanalyzer.analysis.compare import analyze_stock_window
+
+    results = []
+    for s in stocks:
+        log(f"{s['name']} ({s['code']}) 분석 중... (최근 {days}일)")
+        results.append(analyze_stock_window(s["code"], s["name"], days=days))
+
+    payload = {
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "days": days,
+        "results": results,
+    }
+    path = os.path.join(DATA_DIR, "latest_compare.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
+def run_sector_and_save(sector_name: str, log) -> None:
+    """sector_job.start(run_sector_and_save, sector_name, sector_job.log)로 호출된다."""
+    from stockanalyzer.analysis.sector_recommend import analyze_sector
+
+    result = analyze_sector(sector_name, log=log)
+    result["timestamp"] = datetime.now().isoformat(timespec="seconds")
+    path = os.path.join(DATA_DIR, "latest_sector.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+
+def build_universe_and_save(log) -> None:
+    """universe_job.start(build_universe_and_save, universe_job.log)로 호출된다."""
+    from stockanalyzer.crawler.market_cap import fetch_all_listed_stocks
+
+    stocks = fetch_all_listed_stocks(log=log)
+    payload = {"updated_at": datetime.now().isoformat(timespec="seconds"), "stocks": stocks}
+    path = os.path.join(DATA_DIR, "stock_universe.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False)
