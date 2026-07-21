@@ -20,7 +20,7 @@ from ecos_client import (
 from fred_client import add_change_columns, fetch_fred_series
 from market_data import fetch_yahoo_series
 from news_client import fetch_top_economic_news
-from notes_repo import TAGS as NOTE_TAGS, load_notes, note_image_path
+from notes_repo import TAGS as NOTE_TAGS, load_notes, note_image_data_uri
 
 load_dotenv()
 
@@ -1214,6 +1214,47 @@ if active_tab == "🗣️ 종목 심리분석":
             st.dataframe(sdf_display, width="stretch", hide_index=True)
 
 # ── 노트 아카이브 ────────────────────────────────────────────
+@st.dialog("노트", width="large")
+def show_note_dialog(row: pd.Series):
+    date_label = row["note_date"].strftime("%Y-%m-%d") if pd.notna(row["note_date"]) else "날짜 미상"
+    weekday = f" ({row['weekday']})" if row.get("weekday") else ""
+    st.subheader(row["title"])
+    st.caption(f"{date_label}{weekday}")
+
+    data_uri = note_image_data_uri(row.get("image_file"))
+    if data_uri:
+        tag_chips = "".join(
+            f'<span style="background:#4C78A8;color:#fff;padding:2px 10px;border-radius:12px;'
+            f'font-size:12px;margin-right:6px;display:inline-block;">{t}</span>'
+            for t in row["tags"]
+        )
+        key_points_html = "".join(f"<li>{kp}</li>" for kp in row["key_points"])
+        st.markdown(
+            f"""
+            <div style="position:relative;border-radius:8px;overflow:hidden;">
+                <img src="{data_uri}" style="width:100%;display:block;">
+                <div style="position:absolute;left:0;right:0;bottom:0;
+                            background:linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.6) 70%, rgba(0,0,0,0));
+                            color:#fff;padding:20px 16px 14px;">
+                    <div style="margin-bottom:8px;">{tag_chips}</div>
+                    <div style="font-size:14px;line-height:1.5;margin-bottom:8px;">{row['summary']}</div>
+                    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;">{key_points_html}</ul>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        if row["tags"]:
+            st.caption(" · ".join(f"`{t}`" for t in row["tags"]))
+        st.write(row["summary"])
+        for kp in row["key_points"]:
+            st.markdown(f"- {kp}")
+
+    if row.get("source"):
+        st.caption(f"출처: {row['source']}")
+
+
 if active_tab == "📓 노트 아카이브":
     st.subheader("손글씨 경제공부 노트 아카이브")
     st.caption(
@@ -1236,17 +1277,15 @@ if active_tab == "📓 노트 아카이브":
         for _, row in filtered.iterrows():
             date_label = row["note_date"].strftime("%Y-%m-%d") if pd.notna(row["note_date"]) else "날짜 미상"
             weekday = f" ({row['weekday']})" if row.get("weekday") else ""
-            with st.expander(f"{date_label}{weekday} · {row['title']}"):
-                if row["tags"]:
-                    st.caption(" · ".join(f"`{t}`" for t in row["tags"]))
-                st.write(row["summary"])
-                for kp in row["key_points"]:
-                    st.markdown(f"- {kp}")
-                if row.get("source"):
-                    st.caption(f"출처: {row['source']}")
-                img_path = note_image_path(row.get("image_file"))
-                if img_path:
-                    st.image(img_path, width="stretch")
+            with st.container(border=True):
+                col1, col2 = st.columns([6, 1])
+                with col1:
+                    st.markdown(f"**{date_label}{weekday}** · {row['title']}")
+                    if row["tags"]:
+                        st.caption(" · ".join(row["tags"]))
+                with col2:
+                    if st.button("열기", key=f"open_{row['file']}", width="stretch"):
+                        show_note_dialog(row)
 
 # ── 뉴스 ────────────────────────────────────────────────────
 if active_tab == "📰 뉴스":

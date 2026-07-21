@@ -1,6 +1,7 @@
 """notes_ocr.py가 생성한 notes_index.json(손글씨 노트 OCR 결과)을 대시보드에서 쓰기 좋은
 형태로 읽어온다. 배치로 미리 만들어둔 JSON을 그대로 읽기만 하므로(종목 심리분석 탭과 동일한
 패턴) 이 모듈은 외부 API를 호출하지 않는다."""
+import base64
 import json
 import os
 from pathlib import Path
@@ -51,3 +52,12 @@ def note_image_path(image_file: str | None) -> str | None:
         return None
     path = Path(NOTES_IMAGE_DIR) / image_file
     return str(path) if path.exists() else None
+
+
+def note_image_data_uri(image_file: str | None) -> str | None:
+    """이미지 위에 요약 카드를 얹는 HTML 오버레이용으로, 썸네일을 data URI로 인라인 인코딩한다."""
+    path = note_image_path(image_file)
+    if not path:
+        return None
+    b64 = base64.b64encode(Path(path).read_bytes()).decode("ascii")
+    return f"data:image/jpeg;base64,{b64}"
