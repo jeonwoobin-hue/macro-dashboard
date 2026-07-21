@@ -90,8 +90,35 @@ def _apply_zoom_window(data: pd.DataFrame, x: str, fraction: float) -> pd.DataFr
     return windowed if len(windowed) >= 2 else data
 
 
-def render_zoomable_chart(data: pd.DataFrame, x: str, y: str, key: str, **kwargs):
-    """zoom_chart()를 ➕/➖ 확대·축소 버튼과 함께 렌더링한다(시간축 전용)."""
+def note_markers(notes_df: pd.DataFrame, x: str = "date") -> alt.Chart:
+    """노트 날짜마다 세로 점선을 그려, 마우스를 올리면 그날 쓴 노트 제목/요약을 보여준다."""
+    return (
+        alt.Chart(notes_df)
+        .mark_rule(color="#B279A2", strokeDash=[2, 2], opacity=0.6)
+        .encode(
+            x=f"{x}:T",
+            tooltip=[
+                alt.Tooltip(f"{x}:T", title="노트 날짜"),
+                alt.Tooltip("title:N", title="노트 제목"),
+                alt.Tooltip("summary:N", title="요약"),
+            ],
+        )
+    )
+
+
+def render_zoomable_chart(data: pd.DataFrame, x: str, y: str, key: str, notes_df: pd.DataFrame | None = None, **kwargs):
+    """zoom_chart()를 ➕/➖ 확대·축소 버튼과 함께 렌더링한다(시간축 전용).
+
+    notes_df에 [x, title, summary] 컬럼을 담아 넘기면, 현재 확대 구간에 걸리는 노트만 골라
+    세로 점선 마커로 함께 그린다(노트 아카이브 기능과 차트를 잇는 용도)."""
     fraction = zoom_buttons(key)
     windowed = _apply_zoom_window(data, x, fraction)
-    st.altair_chart(zoom_chart(windowed, x=x, y=y, **kwargs), width="stretch")
+    chart = zoom_chart(windowed, x=x, y=y, **kwargs)
+
+    if notes_df is not None and not notes_df.empty and not windowed.empty:
+        x_min, x_max = windowed[x].min(), windowed[x].max()
+        note_window = notes_df[(notes_df[x] >= x_min) & (notes_df[x] <= x_max)]
+        if not note_window.empty:
+            chart = chart + note_markers(note_window, x=x)
+
+    st.altair_chart(chart, width="stretch")

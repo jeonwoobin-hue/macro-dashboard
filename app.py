@@ -20,6 +20,7 @@ from ecos_client import (
 from fred_client import add_change_columns, fetch_fred_series
 from market_data import fetch_yahoo_series
 from news_client import fetch_top_economic_news
+from notes_repo import TAGS as NOTE_TAGS, load_notes, note_image_path
 
 load_dotenv()
 
@@ -197,6 +198,21 @@ def get_news(date_str: str, top_n: int = 10) -> list[dict]:
     return fetch_top_economic_news(date_str, top_n=top_n)
 
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
+def get_notes() -> pd.DataFrame:
+    return load_notes()
+
+
+def notes_for_tags(notes_df: pd.DataFrame, tags: list[str]) -> pd.DataFrame:
+    """차트에 마커로 얹을 노트만 골라 [date, title, summary] 형태로 정리한다."""
+    matched = notes_df[notes_df["tags"].apply(lambda ts: any(t in ts for t in tags))]
+    return (
+        matched[["note_date", "title", "summary"]]
+        .rename(columns={"note_date": "date"})
+        .dropna(subset=["date"])
+    )
+
+
 # 종목 심리분석 탭: 배치로 미리 계산된 결과(data/*.json)는 순수 json.load()로만 읽어서 이 탭을
 # 열기만 해도 항상 즉시 표시되게 한다. "지금 다시 분석"/"비교분석"/"업종분석" 버튼을 실제로 눌렀을
 # 때만 stockanalyzer.{live,analysis.compare,analysis.sector_recommend,crawler.*}를 함수 내부에서
@@ -335,7 +351,8 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
 
 
 TAB_LABELS = [
-    "📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "🗣️ 종목 심리분석", "📰 뉴스",
+    "📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "🗣️ 종목 심리분석",
+    "📓 노트 아카이브", "📰 뉴스",
 ]
 
 # st.tabs()는 화면에 안 보이는 탭이어도 매 rerun마다 안의 코드를 전부 실행해서,
@@ -722,6 +739,10 @@ if active_tab == "💵 금리":
             if "한국은행 기준금리" in merged and pd.notna(latest["한국은행 기준금리"]):
                 st.metric("한국은행 기준금리", f"{latest['한국은행 기준금리']:.2f}%")
 
+        rate_notes = notes_for_tags(get_notes(), ["Fed정책/금리", "수익률곡선/침체신호"])
+        if not rate_notes.empty:
+            st.caption("점선은 이 기간에 작성한 관련 노트입니다. 마우스를 올리면 제목·요약이 보입니다.")
+
         long_rates = merged.melt(
             id_vars="date", value_vars=rate_cols, var_name="구분", value_name="금리(%)"
         ).dropna(subset=["금리(%)"])
@@ -734,10 +755,12 @@ if active_tab == "💵 금리":
             color_range=rate_colors,
             y_title="금리(%)",
             key="rates_curve",
+            notes_df=rate_notes,
         )
         st.markdown("**장단기금리차 (10Y-2Y 스프레드)**")
         render_zoomable_chart(
-            merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)", key="rates_spread"
+            merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)",
+            key="rates_spread", notes_df=rate_notes,
         )
     except Exception as e:  # noqa: BLE001
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
@@ -1189,6 +1212,42 @@ if active_tab == "🗣️ 종목 심리분석":
                 "value_score": "가치점수", "supply_score": "수급점수", "total_score": "종합점수",
             })
             st.dataframe(sdf_display, width="stretch", hide_index=True)
+
+# ── 노트 아카이브 ────────────────────────────────────────────
+if active_tab == "📓 노트 아카이브":
+    st.subheader("손글씨 경제공부 노트 아카이브")
+    st.caption(
+        "직접 정리한 거시경제·시장 공부 노트를 Gemini Vision으로 구조화한 아카이브입니다. "
+        "태그로 필터링해 특정 주제에 대한 과거 생각의 흐름을 시간순으로 되짚어볼 수 있습니다. "
+        "(원본 사진은 로컬 환경에서만 표시됩니다.)"
+    )
+
+    notes_df = get_notes()
+    if notes_df.empty:
+        st.info("아직 인덱싱된 노트가 없습니다. notes_ocr.py로 노트 사진을 먼저 처리해주세요.")
+    else:
+        st.caption(f"총 {len(notes_df)}건의 노트가 인덱싱되어 있습니다.")
+        selected_tags = st.multiselect("태그 필터", NOTE_TAGS)
+
+        filtered = notes_df
+        if selected_tags:
+            filtered = filtered[filtered["tags"].apply(lambda ts: any(t in ts for t in selected_tags))]
+        st.caption(f"{len(filtered)}건 표시 중")
+
+        for _, row in filtered.iterrows():
+            date_label = row["note_date"].strftime("%Y-%m-%d") if pd.notna(row["note_date"]) else "날짜 미상"
+            weekday = f" ({row['weekday']})" if row.get("weekday") else ""
+            with st.expander(f"{date_label}{weekday} · {row['title']}"):
+                if row["tags"]:
+                    st.caption(" · ".join(f"`{t}`" for t in row["tags"]))
+                st.write(row["summary"])
+                for kp in row["key_points"]:
+                    st.markdown(f"- {kp}")
+                if row.get("source"):
+                    st.caption(f"출처: {row['source']}")
+                img_path = note_image_path(row["file"])
+                if img_path:
+                    st.image(img_path, width="stretch")
 
 # ── 뉴스 ────────────────────────────────────────────────────
 if active_tab == "📰 뉴스":
