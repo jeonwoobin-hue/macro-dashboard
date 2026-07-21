@@ -1218,8 +1218,7 @@ if active_tab == "📓 노트 아카이브":
     st.subheader("손글씨 경제공부 노트 아카이브")
     st.caption(
         "직접 정리한 거시경제·시장 공부 노트를 Gemini Vision으로 구조화한 아카이브입니다. "
-        "태그로 필터링해 특정 주제에 대한 과거 생각의 흐름을 시간순으로 되짚어볼 수 있습니다. "
-        "(원본 사진은 로컬 환경에서만 표시됩니다.)"
+        "태그로 필터링해 특정 주제에 대한 과거 생각의 흐름을 시간순으로 되짚어볼 수 있습니다."
     )
 
     notes_df = get_notes()
@@ -1245,7 +1244,7 @@ if active_tab == "📓 노트 아카이브":
                     st.markdown(f"- {kp}")
                 if row.get("source"):
                     st.caption(f"출처: {row['source']}")
-                img_path = note_image_path(row["file"])
+                img_path = note_image_path(row.get("image_file"))
                 if img_path:
                     st.image(img_path, width="stretch")
 

@@ -9,9 +9,9 @@ import pandas as pd
 
 INDEX_PATH = os.path.join(os.path.dirname(__file__), "notes_index.json")
 
-# 원본 사진 폴더. 로컬 개발 환경에만 존재하고 배포 환경(Streamlit Cloud)에는 없을 수 있으므로,
-# 이미지 표시는 항상 파일 존재 여부를 먼저 확인하고 없으면 조용히 생략한다.
-NOTES_IMAGE_DIR = os.getenv("NOTES_IMAGE_DIR", r"C:\Users\admine\Desktop\도바오 raw\경제공부raw")
+# notes_ocr.py가 저장한 리사이즈 썸네일(1600px) 폴더. 저장소에 함께 커밋되므로 로컬/배포
+# 환경 모두에서 동작한다. 그래도 혹시 파일이 없는 케이스에 대비해 존재 여부는 항상 확인한다.
+NOTES_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "notes_images")
 
 TAGS = [
     "Fed정책/금리",
@@ -26,7 +26,7 @@ TAGS = [
     "기타",
 ]
 
-NOTES_COLUMNS = ["file", "note_date", "weekday", "title", "summary", "tags", "key_points", "source"]
+NOTES_COLUMNS = ["file", "note_date", "weekday", "title", "summary", "tags", "key_points", "source", "image_file"]
 
 
 def load_notes() -> pd.DataFrame:
@@ -45,7 +45,9 @@ def load_notes() -> pd.DataFrame:
     return df.sort_values("note_date", ascending=False, na_position="last").reset_index(drop=True)
 
 
-def note_image_path(file: str) -> str | None:
-    """원본 사진 경로. 로컬에 실제로 파일이 있을 때만 경로를 반환한다."""
-    path = Path(NOTES_IMAGE_DIR) / file
+def note_image_path(image_file: str | None) -> str | None:
+    """썸네일 경로. image_file이 없거나(구버전 레코드) 파일이 실제로 없으면 None."""
+    if not image_file or pd.isna(image_file):
+        return None
+    path = Path(NOTES_IMAGE_DIR) / image_file
     return str(path) if path.exists() else None
