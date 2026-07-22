@@ -75,6 +75,22 @@ st.set_page_config(page_title="거시경제 투자심리 대시보드", layout="
 st.markdown(
     """
     <style>
+    /* 한글은 기본적으로 아무 글자 사이에서나 줄바꿈될 수 있어(예: "해석"이 "해"/"석"으로
+       쪼개짐), 좁은 버튼/카드에서 단어 중간이 아니라 띄어쓰기 단위로만 줄바꿈되게 한다.
+       Streamlit이 h1~h6에 자체적으로 word-break:break-word를 박아둬서, 상속만으로는
+       안 먹혀 요소에 직접 !important로 덮어써야 한다. */
+    div[data-testid="stAppViewContainer"],
+    div[data-testid="stAppViewContainer"] h1,
+    div[data-testid="stAppViewContainer"] h2,
+    div[data-testid="stAppViewContainer"] h3,
+    div[data-testid="stAppViewContainer"] h4,
+    div[data-testid="stAppViewContainer"] p,
+    div[data-testid="stAppViewContainer"] span,
+    div[data-testid="stAppViewContainer"] label {
+        word-break: keep-all !important;
+        overflow-wrap: break-word !important;
+    }
+
     @media (min-width: 768px) {
         div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap;
@@ -89,7 +105,7 @@ st.markdown(
     /* 참고자료1 팝오버: width= 인자는 상한일 뿐 콘텐츠가 좁으면 그대로 좁게 뜨므로,
        표가 눌리지 않도록 최소 너비를 강제한다. */
     [data-testid="stPopoverBody"] {
-        min-width: min(680px, 92vw) !important;
+        min-width: min(980px, 94vw) !important;
     }
 
     /* Streamlit 자체 상단 툴바(≫ Deploy ⋮ 줄)도 같은 어두운 색으로 맞춘다. */
@@ -203,7 +219,7 @@ REFERENCE_TABLE_ROWS = [
     {"지표": "비농업 고용", "핵심 정의": "비농업 부문 신규 고용자 수 증감. 경기 모멘텀의 대표 선행 신호", "최적 출처": "FRED (PAYEMS)", "수집 방식": "API", "발표 주기": "매월 첫째 금요일"},
     {"지표": "실업률", "핵심 정의": "경제활동인구 중 실업자 비율. 연준 이중책무(고용) 판단 근거", "최적 출처": "FRED (UNRATE)", "수집 방식": "API", "발표 주기": "NFP와 동시 발표"},
     {"지표": "평균시급 (AHE)", "핵심 정의": "시간당 평균 임금, 전년비(YoY)가 임금발 인플레 압력 판단 기준", "최적 출처": "FRED (CES0500000003)", "수집 방식": "API", "발표 주기": "NFP와 동시 발표"},
-    {"지표": "신규 실업수당 청구건수", "핵심 정의": "매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표", "최적 출처": "FRED (ICSA)", "수집 방식": "API", "발표 주기": "매주 목요일"},
+    {"지표": "신규실업수당 청구건수", "핵심 정의": "매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표", "최적 출처": "FRED (ICSA)", "수집 방식": "API", "발표 주기": "매주 목요일"},
     {"지표": "ISM 서비스 PMI", "핵심 정의": "50 기준 서비스업 경기 확장/위축 판단. 소비 중심 미국 경제 특성상 중요도 높음", "최적 출처": "ISM 공식 발표 / investing.com 캘린더", "수집 방식": "무료 API 없음 → 수동 입력", "발표 주기": "매월 3영업일경"},
     {"지표": "FOMC (점도표·파월 기자회견)", "핵심 정의": "연준 위원들의 금리 전망 중간값(점도표), 통화정책 방향성의 핵심", "최적 출처": "federalreserve.gov (SEP, 성명서, 기자회견)", "수집 방식": "무료 API 없음 → 수동 입력 + 링크", "발표 주기": "연 8회(점도표는 3·6·9·12월)"},
     {"지표": "한국 경기종합지수 (선행·동행)", "핵심 정의": "순환변동치 기준, 향후 경기 방향(선행)·현재 경기 국면(동행) 판단", "최적 출처": "한국은행 ECOS (통계표 901Y067)", "수집 방식": "API (무료 키)", "발표 주기": "매월"},
@@ -358,23 +374,26 @@ with st.container(key="dobio_header"):
         if _main_sel:
             st.session_state["main_section"] = _main_sel
     with menu_col:
-        with st.popover("☰", width=680):
+        with st.popover("☰", width=980):
             st.caption("거시경제 투자심리 대시보드 · 주식 투자 참고용 초안")
             st.caption("데이터 출처: FRED / ISM / 연준(federalreserve.gov) / ECOS / Yahoo Finance")
-            with st.expander("참고자료1. 지표별 최적 출처 요약"):
-                st.dataframe(
-                    pd.DataFrame(REFERENCE_TABLE_ROWS),
-                    width="stretch",
-                    height=440,
-                    hide_index=True,
-                    column_config={
-                        "지표": st.column_config.TextColumn(width="medium"),
-                        "핵심 정의": st.column_config.TextColumn(width="large"),
-                        "최적 출처": st.column_config.TextColumn(width="medium"),
-                        "수집 방식": st.column_config.TextColumn(width="small"),
-                        "발표 주기": st.column_config.TextColumn(width="small"),
-                    },
-                )
+            st.markdown("**참고자료1. 지표별 최적 출처 요약**")
+            # st.expander 안에 캔버스 기반 st.dataframe을 넣으면, 펼쳐지기 전(0폭) 상태로
+            # 마운트된 뒤 폭 재계산이 안 돼 컬럼이 잘려 보이는 버그가 있었다(창 크기를 강제로
+            # 바꿔야만 다시 그려짐) — 접었다 펴는 대신 팝오버 열릴 때 바로 그린다.
+            st.dataframe(
+                pd.DataFrame(REFERENCE_TABLE_ROWS),
+                width="stretch",
+                height=440,
+                hide_index=True,
+                column_config={
+                    "지표": st.column_config.TextColumn(width="medium"),
+                    "핵심 정의": st.column_config.TextColumn(width="large"),
+                    "최적 출처": st.column_config.TextColumn(width="medium"),
+                    "수집 방식": st.column_config.TextColumn(width="medium"),
+                    "발표 주기": st.column_config.TextColumn(width="medium"),
+                },
+            )
 
 # ── 사이드바 ────────────────────────────────────────────────
 with st.sidebar:
@@ -677,7 +696,7 @@ def show_analysis_dialog(title: str, indicator_key: str, name: str, context: str
 
 
 def analysis_button(indicator_key: str, title: str, context: str, cache_key: str):
-    if st.button("🔍 AI해석", key=f"analysis_{indicator_key}", width="stretch"):
+    if st.button("🔍 AI 해석", key=f"analysis_{indicator_key}", width="stretch"):
         show_analysis_dialog(title, indicator_key, title, context, cache_key)
 
 
@@ -926,7 +945,7 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c4:
-            st.subheader("신규 실업수당 청구건수")
+            st.subheader("신규실업수당 청구건수")
             st.caption("매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표.")
             try:
                 df = get_series("ICSA", str(start_date), api_key)
@@ -942,8 +961,8 @@ if active_tab == "👷 고용":
                 with mc2:
                     analysis_button(
                         "claims",
-                        "신규 실업수당 청구건수",
-                        series_context(df, "value", "신규 실업수당 청구건수", signed=False),
+                        "신규실업수당 청구건수",
+                        series_context(df, "value", "신규실업수당 청구건수", signed=False),
                         latest["date"].strftime("%Y-%m-%d"),
                     )
                 render_zoomable_chart(df, x="date", y="value", y_title="건", key="claims")
