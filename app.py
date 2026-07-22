@@ -99,6 +99,15 @@ st.markdown(
     div[class*="st-key-scrollrow"] h3 {
         font-size: 1.35rem;
     }
+    /* 설명(caption) 줄 수와 st.metric의 증감(delta) 유무가 카드마다 달라서(예: BEI 카드는
+       delta가 없어 metric이 더 짧음) +/- 줌 버튼과 차트 시작 위치가 카드마다 어긋났다.
+       두 영역 모두 "가장 긴 경우" 기준으로 높이를 고정해 어떤 조합이 와도 정렬되게 한다. */
+    div[class*="st-key-scrollrow"] [data-testid="stCaptionContainer"] {
+        min-height: 5.6rem;
+    }
+    div[class*="st-key-scrollrow"] [data-testid="stMetric"] {
+        min-height: 6.5rem;
+    }
 
     @media (min-width: 768px) {
         div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] {
