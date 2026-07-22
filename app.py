@@ -91,6 +91,15 @@ st.markdown(
         overflow-wrap: break-word !important;
     }
 
+    /* 4개 카드가 나란히 놓이는 행(scrollrow)에서, 제목 글자 수가 카드마다 달라 어떤 카드는
+       제목이 1줄, 어떤 카드는 2줄로 넘어가면서 그 아래 지표·차트 높이가 카드마다 어긋나
+       보이던 문제 — 가장 긴 제목("신규실업수당 청구건수")도 한 줄에 들어오도록 카드 제목
+       글자 크기를 살짝 줄인다(min-height로 높이만 맞추면 앵커 아이콘과의 flex 레이아웃이
+       꼬여 오히려 3줄로 더 길어지는 부작용이 있었다). */
+    div[class*="st-key-scrollrow"] h3 {
+        font-size: 1.35rem;
+    }
+
     @media (min-width: 768px) {
         div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap;
