@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from datetime import datetime, time as dtime, timedelta
@@ -85,40 +86,55 @@ st.markdown(
             flex: 0 0 340px;
         }
     }
-    /* 참고자료1 표: 좁은 화면(모바일 포함)에서 셀 텍스트가 줄바꿈으로 쪼개지지 않도록
-       표 자체를 가로 스크롤시킨다(칸이 눌려서 읽기 힘들어지는 문제 방지). */
-    div[class*="st-key-reftable_scroll"] {
-        overflow-x: auto;
-        padding-bottom: 0.6rem;
+    /* 참고자료1 팝오버: width= 인자는 상한일 뿐 콘텐츠가 좁으면 그대로 좁게 뜨므로,
+       표가 눌리지 않도록 최소 너비를 강제한다. */
+    [data-testid="stPopoverBody"] {
+        min-width: min(680px, 92vw) !important;
     }
-    div[class*="st-key-reftable_scroll"] table {
-        white-space: nowrap;
+
+    /* Streamlit 자체 상단 툴바(≫ Deploy ⋮ 줄)도 같은 어두운 색으로 맞춘다. */
+    header[data-testid="stHeader"] {
+        background: #0B0F17 !important;
+    }
+    /* 툴바 아래 기본 여백(block-container padding-top)이 밝은 배경색으로 남아
+       이음새처럼 보이던 문제 — 툴바 높이(60px)에 맞춰 줄여서 이음새를 없앤다. */
+    div[data-testid="stAppViewContainer"] .block-container {
+        padding-top: 2.75rem !important;
     }
 
     /* ── Dobio 상단 헤더(고정) ─────────────────────────────── */
-    div[class*="st-key-dobio_header"] {
+    /* 끝에 공백을 붙여 "st-key-dobio_header_inner"(하위 래퍼)까지 함께 매칭되는 걸 막는다
+       — 안 그러면 sticky/margin/padding이 두 컨테이너에 중복 적용돼 선이 2겹으로 보인다. */
+    div[class*="st-key-dobio_header "] {
         position: sticky;
-        top: 0;
+        /* Streamlit 자체 툴바(높이 60px, 항상 최상단 고정)와 겹치지 않도록 그 아래에 붙인다.
+           top:0으로 두면 스크롤 시 음수 마진과 맞물려 sticky가 아예 안 먹는 버그가 있었다. */
+        top: 60px;
         z-index: 999;
-        background: #0F141E;
-        margin: -1rem -1rem 1.1rem -1rem;
+        background: #0B0F17;
+        margin: 0 -1rem 1.1rem -1rem;
         padding: 0.7rem 1.5rem 0.9rem 1.5rem;
-        border-bottom: 3px solid #FF4B4B;
     }
-    /* 로고를 겸하는 '홈으로' 버튼 */
+    /* 로고 이미지를 배경으로 쓰는 '홈으로' 버튼 (텍스트 라벨은 숨김) */
     div[class*="st-key-dobio_home_btn_wrap"] button {
-        background: transparent !important;
+        background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        padding: 0.2rem 0 !important;
+        padding: 0 !important;
+        opacity: 0.92;
     }
-    div[class*="st-key-dobio_home_btn_wrap"] button p {
-        font-size: 1.2rem !important;
-        font-weight: 800 !important;
-        color: #EAEFF5 !important;
-        letter-spacing: -0.01em;
+    div[class*="st-key-dobio_home_btn_wrap"] button:hover { opacity: 1; }
+    div[class*="st-key-dobio_home_btn_wrap"] button p { display: none; }
+
+    /* 헤더/본문 콘텐츠 최대폭 고정(초광폭 모니터에서도 항상 일정한 레이아웃) */
+    div[class*="st-key-dobio_header_inner"] {
+        max-width: 1280px;
+        margin: 0 auto;
     }
-    div[class*="st-key-dobio_home_btn_wrap"] button:hover p { color: #FFFFFF !important; }
+    div[data-testid="stAppViewContainer"] .block-container {
+        max-width: 1280px;
+        margin: 0 auto;
+    }
 
     /* 큰 내비게이션(segmented_control)을 헤더 링크처럼 보이게 재스타일링 */
     div[class*="st-key-mainnav_wrap"] [data-testid="stWidgetLabel"] {
@@ -179,39 +195,81 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-REFERENCE_TABLE_MD = """
-| 지표 | 핵심 정의 (투자 관점) | 최적 출처 | 수집 방식 | 발표 주기 |
-|---|---|---|---|---|
-| **Core CPI (MoM)** | 에너지·식품 제외 소비자물가 전월비 변화율. 연준이 가장 주목하는 근원 인플레 지표 | **FRED** (`CPILFESL`) | API (무료 키) | 매월 중순 |
-| **Core PCE (MoM)** | 에너지·식품 제외 개인소비지출 물가지수. 연준이 공식 타겟(2%)으로 삼는 지표 | **FRED** (`PCEPILFE`) | API | 매월 말 |
-| **WTI 유가** | 서부텍사스산 원유 현물가($/배럴). 에너지 인플레이션과 에너지주 실적에 직결되는 선행 변수 | **FRED** (`DCOILWTICO`) | API | 매 영업일 |
-| **기대인플레이션 (BEI)** | 국채-물가연동국채(TIPS) 스프레드로 산출한 시장 기대인플레이션(5년·10년물) | **FRED** (`T5YIE`, `T10YIE`) | API | 매 영업일 |
-| **비농업 고용** | 비농업 부문 신규 고용자 수 증감. 경기 모멘텀의 대표 선행 신호 | **FRED** (`PAYEMS`) | API | 매월 첫째 금요일 |
-| **실업률** | 경제활동인구 중 실업자 비율. 연준 이중책무(고용) 판단 근거 | **FRED** (`UNRATE`) | API | NFP와 동시 발표 |
-| **평균시급 (AHE)** | 시간당 평균 임금, 전년비(YoY)가 임금발 인플레 압력 판단 기준 | **FRED** (`CES0500000003`) | API | NFP와 동시 발표 |
-| **신규 실업수당 청구건수** | 매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표 | **FRED** (`ICSA`) | API | 매주 목요일 |
-| **ISM 서비스 PMI** | 50 기준 서비스업 경기 확장/위축 판단. 소비 중심 미국 경제 특성상 중요도 높음 | **ISM 공식 발표 / investing.com 캘린더** | 무료 API 없음 → 수동 입력 | 매월 3영업일경 |
-| **FOMC (점도표·파월 기자회견)** | 연준 위원들의 금리 전망 중간값(점도표), 통화정책 방향성의 핵심 | **federalreserve.gov** (SEP, 성명서, 기자회견) | 무료 API 없음 → 수동 입력 + 링크 | 연 8회(점도표는 3·6·9·12월) |
-| **한국 경기종합지수 (선행·동행)** | 순환변동치 기준, 향후 경기 방향(선행)·현재 경기 국면(동행) 판단 | **한국은행 ECOS** (통계표 `901Y067`) | API (무료 키) | 매월 |
-| **美 2Y·10Y 국채금리 · Fed 정책금리** | 단기·장기 금리, 스프레드(10Y-2Y)는 대표적 경기침체 예고 지표. 정책금리는 FOMC 결정치 | **FRED** (`DGS2`, `DGS10`, `DFEDTARU`) | API | 매 영업일(정책금리는 FOMC 시) |
-| **美 국채 수익률곡선** | 1개월~30년 전 만기 금리를 연결한 곡선. 우하향(역전)되면 경기침체 예고 신호로 흔히 해석 | **FRED** (`DGS1MO`~`DGS30`) | API | 매 영업일 |
-| **반도체 버블 지수 (SOX)** | PHLX 반도체지수, 닷컴버블 대비 현재 AI 랠리의 과열 정도를 비교 | **Yahoo Finance** (`^SOX`) | API(비공식 공개 차트) | 매 영업일 |
-| **Shiller PE (CAPE Ratio)** | S&P500 10년 평균 실질이익 기준 경기조정 PER. 장기평균(~17) 대비 고평가/저평가 판단 | **multpl.com** (Robert Shiller 데이터) | 무료 API 없음 → 스크래핑 | 매월 |
-| **버핏지수 근사치** | 시가총액(S&P500) ÷ GDP, 장기평균=100 지수화. 워런 버핏이 참고하는 밸류에이션 지표 근사치 | **Yahoo Finance**(`^GSPC`) + **FRED**(`GDP`) | API | 매 영업일(GDP는 분기) |
-| **VIX (공포지수)** | S&P500 옵션 내재변동성. 20 이하 안정, 30 이상 공포 국면으로 흔히 해석 | **FRED** (`VIXCLS`) | API | 매 영업일 |
-| **MOVE Index** | ICE BofA MOVE Index. 美 국채 옵션 내재변동성 기준, 채권시장판 VIX | **Yahoo Finance** (`^MOVE`) | API(비공식 공개 차트) | 매 영업일 |
-| **KOSPI·KOSDAQ·Nasdaq·Dow** | 한·미 대표 증시 지수 4종. 시장 탭에서 장중 1시간 단위로 갱신 | **Yahoo Finance** (`^KS11`,`^KQ11`,`^IXIC`,`^DJI`) | API(비공식 공개 차트) | 매 영업일 |
-| **국내주식 인간지표** | 국내 주식 커뮤니티(디시인사이드) 게시글 키워드 매칭 기반 긍정/부정 심리 분류 | 디시인사이드 국내주식 갤러리 | 크롤링 | 매일(전일자 기준) |
-| **경제 뉴스 Top 10** | 네이버 뉴스 랭킹 중 경제 키워드가 포함된 전일자 기사 | 네이버 뉴스 랭킹 | 크롤링 | 매일(전일자 기준) |
-"""
+REFERENCE_TABLE_ROWS = [
+    {"지표": "Core CPI (MoM)", "핵심 정의": "에너지·식품 제외 소비자물가 전월비 변화율. 연준이 가장 주목하는 근원 인플레 지표", "최적 출처": "FRED (CPILFESL)", "수집 방식": "API (무료 키)", "발표 주기": "매월 중순"},
+    {"지표": "Core PCE (MoM)", "핵심 정의": "에너지·식품 제외 개인소비지출 물가지수. 연준이 공식 타겟(2%)으로 삼는 지표", "최적 출처": "FRED (PCEPILFE)", "수집 방식": "API", "발표 주기": "매월 말"},
+    {"지표": "WTI 유가", "핵심 정의": "서부텍사스산 원유 현물가($/배럴). 에너지 인플레이션과 에너지주 실적에 직결되는 선행 변수", "최적 출처": "FRED (DCOILWTICO)", "수집 방식": "API", "발표 주기": "매 영업일"},
+    {"지표": "기대인플레이션 (BEI)", "핵심 정의": "국채-물가연동국채(TIPS) 스프레드로 산출한 시장 기대인플레이션(5년·10년물)", "최적 출처": "FRED (T5YIE, T10YIE)", "수집 방식": "API", "발표 주기": "매 영업일"},
+    {"지표": "비농업 고용", "핵심 정의": "비농업 부문 신규 고용자 수 증감. 경기 모멘텀의 대표 선행 신호", "최적 출처": "FRED (PAYEMS)", "수집 방식": "API", "발표 주기": "매월 첫째 금요일"},
+    {"지표": "실업률", "핵심 정의": "경제활동인구 중 실업자 비율. 연준 이중책무(고용) 판단 근거", "최적 출처": "FRED (UNRATE)", "수집 방식": "API", "발표 주기": "NFP와 동시 발표"},
+    {"지표": "평균시급 (AHE)", "핵심 정의": "시간당 평균 임금, 전년비(YoY)가 임금발 인플레 압력 판단 기준", "최적 출처": "FRED (CES0500000003)", "수집 방식": "API", "발표 주기": "NFP와 동시 발표"},
+    {"지표": "신규 실업수당 청구건수", "핵심 정의": "매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표", "최적 출처": "FRED (ICSA)", "수집 방식": "API", "발표 주기": "매주 목요일"},
+    {"지표": "ISM 서비스 PMI", "핵심 정의": "50 기준 서비스업 경기 확장/위축 판단. 소비 중심 미국 경제 특성상 중요도 높음", "최적 출처": "ISM 공식 발표 / investing.com 캘린더", "수집 방식": "무료 API 없음 → 수동 입력", "발표 주기": "매월 3영업일경"},
+    {"지표": "FOMC (점도표·파월 기자회견)", "핵심 정의": "연준 위원들의 금리 전망 중간값(점도표), 통화정책 방향성의 핵심", "최적 출처": "federalreserve.gov (SEP, 성명서, 기자회견)", "수집 방식": "무료 API 없음 → 수동 입력 + 링크", "발표 주기": "연 8회(점도표는 3·6·9·12월)"},
+    {"지표": "한국 경기종합지수 (선행·동행)", "핵심 정의": "순환변동치 기준, 향후 경기 방향(선행)·현재 경기 국면(동행) 판단", "최적 출처": "한국은행 ECOS (통계표 901Y067)", "수집 방식": "API (무료 키)", "발표 주기": "매월"},
+    {"지표": "美 2Y·10Y 국채금리 · Fed 정책금리", "핵심 정의": "단기·장기 금리, 스프레드(10Y-2Y)는 대표적 경기침체 예고 지표. 정책금리는 FOMC 결정치", "최적 출처": "FRED (DGS2, DGS10, DFEDTARU)", "수집 방식": "API", "발표 주기": "매 영업일(정책금리는 FOMC 시)"},
+    {"지표": "美 국채 수익률곡선", "핵심 정의": "1개월~30년 전 만기 금리를 연결한 곡선. 우하향(역전)되면 경기침체 예고 신호로 흔히 해석", "최적 출처": "FRED (DGS1MO~DGS30)", "수집 방식": "API", "발표 주기": "매 영업일"},
+    {"지표": "반도체 버블 지수 (SOX)", "핵심 정의": "PHLX 반도체지수, 닷컴버블 대비 현재 AI 랠리의 과열 정도를 비교", "최적 출처": "Yahoo Finance (^SOX)", "수집 방식": "API(비공식 공개 차트)", "발표 주기": "매 영업일"},
+    {"지표": "Shiller PE (CAPE Ratio)", "핵심 정의": "S&P500 10년 평균 실질이익 기준 경기조정 PER. 장기평균(~17) 대비 고평가/저평가 판단", "최적 출처": "multpl.com (Robert Shiller 데이터)", "수집 방식": "무료 API 없음 → 스크래핑", "발표 주기": "매월"},
+    {"지표": "버핏지수 근사치", "핵심 정의": "시가총액(S&P500) ÷ GDP, 장기평균=100 지수화. 워런 버핏이 참고하는 밸류에이션 지표 근사치", "최적 출처": "Yahoo Finance(^GSPC) + FRED(GDP)", "수집 방식": "API", "발표 주기": "매 영업일(GDP는 분기)"},
+    {"지표": "VIX (공포지수)", "핵심 정의": "S&P500 옵션 내재변동성. 20 이하 안정, 30 이상 공포 국면으로 흔히 해석", "최적 출처": "FRED (VIXCLS)", "수집 방식": "API", "발표 주기": "매 영업일"},
+    {"지표": "MOVE Index", "핵심 정의": "ICE BofA MOVE Index. 美 국채 옵션 내재변동성 기준, 채권시장판 VIX", "최적 출처": "Yahoo Finance (^MOVE)", "수집 방식": "API(비공식 공개 차트)", "발표 주기": "매 영업일"},
+    {"지표": "KOSPI·KOSDAQ·Nasdaq·Dow", "핵심 정의": "한·미 대표 증시 지수 4종. 시장 탭에서 장중 1시간 단위로 갱신", "최적 출처": "Yahoo Finance (^KS11,^KQ11,^IXIC,^DJI)", "수집 방식": "API(비공식 공개 차트)", "발표 주기": "매 영업일"},
+    {"지표": "국내주식 인간지표", "핵심 정의": "국내 주식 커뮤니티(디시인사이드) 게시글 키워드 매칭 기반 긍정/부정 심리 분류", "최적 출처": "디시인사이드 국내주식 갤러리", "수집 방식": "크롤링", "발표 주기": "매일(전일자 기준)"},
+    {"지표": "경제 뉴스 Top 10", "핵심 정의": "네이버 뉴스 랭킹 중 경제 키워드가 포함된 전일자 기사", "최적 출처": "네이버 뉴스 랭킹", "수집 방식": "크롤링", "발표 주기": "매일(전일자 기준)"},
+]
 
-def _mtime_fresh(*paths: str, hours: float = 24) -> bool:
-    """파일들 중 하나라도 최근 hours시간 이내에 갱신됐으면 True (배치 데이터 새로고침 표시용)."""
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+_SEEN_FILE = os.path.join(_DATA_DIR, "nav_seen.json")
+
+# 탭별 "새 데이터" 배지의 근거가 되는 원본 파일들. 사용자가 그 탭을 한 번 열어보면
+# _mark_seen()이 현재 시각을 기록하고, 그 뒤로는 파일이 그때보다 더 최근에 갱신됐을 때만
+# 다시 배지가 뜬다(단순 24시간 타이머가 아니라 "이 갱신을 아직 안 봤는지"를 추적).
+FRESH_SOURCES = {
+    "human_keyword": ("sentiment_data.json", "sentiment_history.csv"),
+    "human_stock": (os.path.join(_DATA_DIR, "latest_run.json"),),
+    "multi_notes": ("notes_index.json",),
+}
+
+
+def _load_seen() -> dict:
+    if os.path.exists(_SEEN_FILE):
+        try:
+            with open(_SEEN_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:  # noqa: BLE001
+            return {}
+    return {}
+
+
+def _save_seen(seen: dict) -> None:
+    try:
+        os.makedirs(_DATA_DIR, exist_ok=True)
+        with open(_SEEN_FILE, "w", encoding="utf-8") as f:
+            json.dump(seen, f)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+_SEEN = _load_seen()
+
+
+def _mark_seen(key: str) -> None:
+    _SEEN[key] = datetime.now().timestamp()
+    _save_seen(_SEEN)
+
+
+def _unseen_fresh(key: str, hours: float = 24) -> bool:
+    """key에 연결된 원본 파일이 hours시간 이내에 갱신됐고, 사용자가 그 갱신을
+    아직 못 봤으면(마지막으로 본 시각보다 파일이 더 최근이면) True."""
     now = datetime.now().timestamp()
-    for p in paths:
-        if os.path.exists(p) and (now - os.path.getmtime(p)) <= hours * 3600:
-            return True
-    return False
+    latest = 0.0
+    for p in FRESH_SOURCES.get(key, ()):
+        if os.path.exists(p):
+            latest = max(latest, os.path.getmtime(p))
+    if latest == 0.0 or (now - latest) > hours * 3600:
+        return False
+    return latest > _SEEN.get(key, 0)
 
 
 def _badge_css(container_key: str, fresh_positions: list[int]) -> str:
@@ -245,11 +303,8 @@ def _badge_css(container_key: str, fresh_positions: list[int]) -> str:
     """
 
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-HUMAN_KEYWORD_FRESH = _mtime_fresh("sentiment_data.json", "sentiment_history.csv")
-HUMAN_STOCK_FRESH = _mtime_fresh(os.path.join(_DATA_DIR, "latest_run.json"))
-HUMAN_FRESH = HUMAN_KEYWORD_FRESH or HUMAN_STOCK_FRESH
-NOTES_FRESH = _mtime_fresh("notes_index.json")
+HUMAN_FRESH = _unseen_fresh("human_keyword") or _unseen_fresh("human_stock")
+NOTES_FRESH = _unseen_fresh("multi_notes")
 
 MAIN_SECTIONS = ["종목분석 ↗", "경제지표", "인간지표", "멀티차트"]
 MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH]
@@ -257,13 +312,38 @@ MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH]
 if "main_section" not in st.session_state:
     st.session_state["main_section"] = "홈"
 
+
+@st.cache_data
+def _b64_file(path: str) -> str:
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
+_LOGO_B64 = _b64_file("Dobio_header_logo.png")
+
 # ── 헤더 (Dobio 로고 + 큰 내비게이션, 고정) ───────────────────
 with st.container(key="dobio_header"):
-    logo_col, nav_col, menu_col = st.columns([0.16, 0.68, 0.16])
-    with logo_col:
-        with st.container(key="dobio_home_btn_wrap"):
-            if st.button("🟩 dobi:orange[o]", key="dobio_home_btn", help="메인 화면으로"):
-                st.session_state["main_section"] = "홈"
+    with st.container(key="dobio_header_inner"):
+        logo_col, nav_col, menu_col = st.columns([0.16, 0.68, 0.16])
+        with logo_col:
+            with st.container(key="dobio_home_btn_wrap"):
+                st.markdown(
+                    f"""
+                    <style>
+                    div[class*="st-key-dobio_home_btn_wrap"] button {{
+                        background-image: url("data:image/png;base64,{_LOGO_B64}");
+                        background-repeat: no-repeat;
+                        background-position: left center;
+                        background-size: contain;
+                        width: 132px;
+                        height: 34px;
+                    }}
+                    </style>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if st.button("dobio", key="dobio_home_btn", help="메인 화면으로"):
+                    st.session_state["main_section"] = "홈"
     with nav_col:
         with st.container(key="mainnav_wrap"):
             st.markdown(
@@ -278,12 +358,23 @@ with st.container(key="dobio_header"):
         if _main_sel:
             st.session_state["main_section"] = _main_sel
     with menu_col:
-        with st.popover("☰"):
+        with st.popover("☰", width=680):
             st.caption("거시경제 투자심리 대시보드 · 주식 투자 참고용 초안")
             st.caption("데이터 출처: FRED / ISM / 연준(federalreserve.gov) / ECOS / Yahoo Finance")
             with st.expander("참고자료1. 지표별 최적 출처 요약"):
-                with st.container(key="reftable_scroll"):
-                    st.markdown(REFERENCE_TABLE_MD)
+                st.dataframe(
+                    pd.DataFrame(REFERENCE_TABLE_ROWS),
+                    width="stretch",
+                    height=440,
+                    hide_index=True,
+                    column_config={
+                        "지표": st.column_config.TextColumn(width="medium"),
+                        "핵심 정의": st.column_config.TextColumn(width="large"),
+                        "최적 출처": st.column_config.TextColumn(width="medium"),
+                        "수집 방식": st.column_config.TextColumn(width="small"),
+                        "발표 주기": st.column_config.TextColumn(width="small"),
+                    },
+                )
 
 # ── 사이드바 ────────────────────────────────────────────────
 with st.sidebar:
@@ -441,10 +532,6 @@ def render_sentiment_gauge(title: str, score: float, source_caption: str):
 
 
 if st.session_state["main_section"] == "홈":
-    hero_img_l, hero_img_mid, hero_img_r = st.columns([1, 1.3, 1])
-    with hero_img_mid:
-        st.image("Dobio_main_1200x1200.png", width="stretch")
-
     with st.container(key="dobio_herocard"):
         gauge_col1, gauge_col2 = st.columns(2)
         with gauge_col1:
@@ -598,20 +685,26 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
 # 세부 메뉴(segmented_control)를 추가로 보여준다. st.tabs()는 화면에 안 보이는 탭이어도
 # 매 rerun마다 안의 코드를 전부 실행해서 API 호출이 한 번에 몰리는 문제가 있었기 때문에,
 # 선택된 하나의 active_tab 값만 계산해 아래 코드가 실제로 선택된 것만 실행하게 유지한다.
-ECON_SUB_LABELS = ["🐟 물가", "👷 고용", "🏭 경기", "🏦 연준", "💵 금리", "📐 가치평가", "📰 뉴스"]
+ECON_SUB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기", "💵 금리", "🏦 연준", "🫧 버블", "📰 뉴스"]
 STOCK_SUB_LABELS = ["🔍 종목 검색·비교", "🏭 업종분석"]
 HUMAN_SUB_LABELS = ["🔑 국내주식 키워드", "😨 공포지수", "🗣️ 종목 심리분석"]
-MULTI_SUB_LABELS = ["📈 시장", "📓 노트 아카이브"]
+HUMAN_SEEN_KEYS = {"🔑 국내주식 키워드": "human_keyword", "🗣️ 종목 심리분석": "human_stock"}
 
 
-def _sub_nav(label: str, session_key: str, options: list[str], fresh_options: list[str] | None = None) -> str:
-    """옵션 중 최근 갱신된 것에 빨간 점 배지를 붙여 보여주고, 선택된 라벨을 반환한다."""
-    fresh_options = fresh_options or []
+def _sub_nav(label: str, session_key: str, options: list[str], seen_keys: dict[str, str] | None = None) -> str:
+    """옵션 중 사용자가 아직 못 본 최신 데이터가 있으면 빨간 점 배지를 붙이고,
+    현재 선택된(=화면에 보여줄) 옵션은 이 호출 시점에 '봤음'으로 기록한다."""
+    seen_keys = seen_keys or {}
     if session_key not in st.session_state:
         st.session_state[session_key] = options[0]
+    if st.session_state[session_key] in seen_keys:
+        _mark_seen(seen_keys[st.session_state[session_key]])
     wrap_key = f"{session_key}_wrap"
     with st.container(key=wrap_key):
-        positions = [i + 1 for i, opt in enumerate(options) if opt in fresh_options]
+        positions = [
+            i + 1 for i, opt in enumerate(options)
+            if opt in seen_keys and _unseen_fresh(seen_keys[opt])
+        ]
         st.markdown(_badge_css(wrap_key, positions), unsafe_allow_html=True)
         selected = st.segmented_control(
             label, options, default=st.session_state[session_key], label_visibility="collapsed"
@@ -626,17 +719,10 @@ main_section = st.session_state["main_section"]
 if main_section == "홈":
     active_tab = None
 elif main_section == "멀티차트":
-    active_tab = _sub_nav(
-        "멀티차트 메뉴", "multi_sub", MULTI_SUB_LABELS,
-        ["📓 노트 아카이브"] if NOTES_FRESH else [],
-    )
+    _mark_seen("multi_notes")
+    active_tab = "📓 노트 아카이브"
 elif main_section == "인간지표":
-    _human_fresh = []
-    if HUMAN_KEYWORD_FRESH:
-        _human_fresh.append("🔑 국내주식 키워드")
-    if HUMAN_STOCK_FRESH:
-        _human_fresh.append("🗣️ 종목 심리분석")
-    active_tab = _sub_nav("인간지표 메뉴", "human_sub", HUMAN_SUB_LABELS, _human_fresh)
+    active_tab = _sub_nav("인간지표 메뉴", "human_sub", HUMAN_SUB_LABELS, HUMAN_SEEN_KEYS)
 elif main_section == "종목분석 ↗":
     active_tab = _sub_nav("종목분석 메뉴", "stock_sub", STOCK_SUB_LABELS)
 else:  # 경제지표
@@ -1106,8 +1192,8 @@ if active_tab == "💵 금리":
     else:
         st.info("수익률곡선 데이터를 불러오지 못했습니다.")
 
-# ── 가치평가 ────────────────────────────────────────────────
-if active_tab == "📐 가치평가":
+# ── 버블 ────────────────────────────────────────────────────
+if active_tab == "🫧 버블":
     st.subheader("반도체 버블 지수 (닷컴버블 vs AI·반도체 랠리)")
     st.caption(
         "PHLX 반도체지수(SOX)를 각 랠리 시작월 = 100으로 지수화해 상승폭을 직접 비교합니다. "

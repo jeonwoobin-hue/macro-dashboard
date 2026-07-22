@@ -11,6 +11,9 @@ sentiment_raw_posts.json
 # run_stock_pipeline.py 실행마다 재생성되는 차트/마크다운 리포트 (앱은 data/latest_run.json만 읽음)
 reports/
 
+# 방문자가 각 탭을 "봤는지" 기록하는 로컬 상태 (빨간 점 배지용, 실데이터 아님)
+data/nav_seen.json
+
 
 # OS/에디터
 .DS_Store
