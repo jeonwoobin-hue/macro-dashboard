@@ -1217,7 +1217,7 @@ if active_tab == "🗣️ 종목 심리분석":
 @st.dialog("노트", width="large")
 def show_note_dialog(row: pd.Series):
     date_label = row["note_date"].strftime("%Y-%m-%d") if pd.notna(row["note_date"]) else "날짜 미상"
-    weekday = f" ({row['weekday']})" if row.get("weekday") else ""
+    weekday = f" ({row['weekday']})" if pd.notna(row.get("weekday")) else ""
     st.subheader(row["title"])
     st.caption(f"{date_label}{weekday}")
 
@@ -1230,16 +1230,16 @@ def show_note_dialog(row: pd.Series):
         )
         key_points_html = "".join(f"<li>{kp}</li>" for kp in row["key_points"])
         st.markdown(
+            f'<img src="{data_uri}" style="width:100%;display:block;border-radius:8px;">',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
             f"""
-            <div style="position:relative;border-radius:8px;overflow:hidden;">
-                <img src="{data_uri}" style="width:100%;display:block;">
-                <div style="position:absolute;left:0;right:0;bottom:0;
-                            background:linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.6) 70%, rgba(0,0,0,0));
-                            color:#fff;padding:20px 16px 14px;">
-                    <div style="margin-bottom:8px;">{tag_chips}</div>
-                    <div style="font-size:14px;line-height:1.5;margin-bottom:8px;">{row['summary']}</div>
-                    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;">{key_points_html}</ul>
-                </div>
+            <div style="border-radius:8px;margin-top:10px;padding:14px 16px;
+                        background:rgba(127,127,127,0.12);">
+                <div style="margin-bottom:8px;">{tag_chips}</div>
+                <div style="font-size:14px;line-height:1.5;margin-bottom:8px;">{row['summary']}</div>
+                <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;">{key_points_html}</ul>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1251,7 +1251,7 @@ def show_note_dialog(row: pd.Series):
         for kp in row["key_points"]:
             st.markdown(f"- {kp}")
 
-    if row.get("source"):
+    if pd.notna(row.get("source")):
         st.caption(f"출처: {row['source']}")
 
 
@@ -1276,7 +1276,7 @@ if active_tab == "📓 노트 아카이브":
 
         for _, row in filtered.iterrows():
             date_label = row["note_date"].strftime("%Y-%m-%d") if pd.notna(row["note_date"]) else "날짜 미상"
-            weekday = f" ({row['weekday']})" if row.get("weekday") else ""
+            weekday = f" ({row['weekday']})" if pd.notna(row.get("weekday")) else ""
             with st.container(border=True):
                 col1, col2 = st.columns([6, 1])
                 with col1:
