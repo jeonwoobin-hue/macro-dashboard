@@ -27,7 +27,10 @@ TAGS = [
     "기타",
 ]
 
-NOTES_COLUMNS = ["file", "note_date", "weekday", "title", "summary", "tags", "key_points", "source", "image_file"]
+NOTES_COLUMNS = [
+    "file", "note_date", "weekday", "title", "summary", "tags", "key_points", "source", "image_file",
+    "has_chart", "macro_interpretation", "policy_or_strategy_implication", "executive_summary",
+]
 
 
 def load_notes() -> pd.DataFrame:

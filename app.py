@@ -1223,30 +1223,43 @@ def show_note_dialog(row: pd.Series):
 
     data_uri = note_image_data_uri(row.get("image_file"))
     if data_uri:
+        st.markdown(
+            f'<img src="{data_uri}" style="width:100%;display:block;border-radius:8px;">',
+            unsafe_allow_html=True,
+        )
+
+    if row["tags"]:
         tag_chips = "".join(
             f'<span style="background:#4C78A8;color:#fff;padding:2px 10px;border-radius:12px;'
             f'font-size:12px;margin-right:6px;display:inline-block;">{t}</span>'
             for t in row["tags"]
         )
+        st.markdown(f'<div style="margin:10px 0 6px;">{tag_chips}</div>', unsafe_allow_html=True)
+
+    if pd.notna(row.get("executive_summary")):
+        has_chart = bool(row.get("has_chart"))
+        labels = (
+            {"key_points": "핵심 수치·트렌드", "macro": "거시경제적 의미", "policy": "통화정책·금융시장 파급효과"}
+            if has_chart
+            else {"key_points": "핵심 주제·내용", "macro": "메커니즘·인과관계", "policy": "투자·자산배분 시사점"}
+        )
         key_points_html = "".join(f"<li>{kp}</li>" for kp in row["key_points"])
         st.markdown(
-            f'<img src="{data_uri}" style="width:100%;display:block;border-radius:8px;">',
-            unsafe_allow_html=True,
-        )
-        st.markdown(
             f"""
-            <div style="border-radius:8px;margin-top:10px;padding:14px 16px;
-                        background:rgba(127,127,127,0.12);">
-                <div style="margin-bottom:8px;">{tag_chips}</div>
-                <div style="font-size:14px;line-height:1.5;margin-bottom:8px;">{row['summary']}</div>
-                <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;">{key_points_html}</ul>
+            <div style="border-radius:8px;padding:14px 16px;background:rgba(127,127,127,0.12);">
+                <div style="font-size:13px;font-weight:600;margin-bottom:4px;">{labels['key_points']}</div>
+                <ul style="margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.5;">{key_points_html}</ul>
+                <div style="font-size:13px;font-weight:600;margin-bottom:4px;">{labels['macro']}</div>
+                <div style="font-size:14px;line-height:1.5;margin-bottom:12px;">{row['macro_interpretation']}</div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:4px;">{labels['policy']}</div>
+                <div style="font-size:14px;line-height:1.5;margin-bottom:12px;">{row['policy_or_strategy_implication']}</div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:4px;">📌 종합 요약</div>
+                <div style="font-size:14px;line-height:1.5;font-weight:500;">{row['executive_summary']}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
     else:
-        if row["tags"]:
-            st.caption(" · ".join(f"`{t}`" for t in row["tags"]))
         st.write(row["summary"])
         for kp in row["key_points"]:
             st.markdown(f"- {kp}")
