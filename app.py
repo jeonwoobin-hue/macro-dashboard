@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import altair as alt
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 from ai_analysis import get_indicator_analysis
@@ -340,8 +341,8 @@ def _badge_css(container_key: str, fresh_positions: list[int]) -> str:
 HUMAN_FRESH = _unseen_fresh("human_keyword") or _unseen_fresh("human_stock")
 NOTES_FRESH = _unseen_fresh("multi_notes")
 
-MAIN_SECTIONS = ["종목분석 ↗", "경제지표", "인간지표", "멀티차트"]
-MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH]
+MAIN_SECTIONS = ["종목분석 ↗", "경제지표", "인간지표", "멀티차트", "동전점지"]
+MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH, False]
 
 if "main_section" not in st.session_state:
     st.session_state["main_section"] = "홈"
@@ -758,12 +759,328 @@ if main_section == "홈":
 elif main_section == "멀티차트":
     _mark_seen("multi_notes")
     active_tab = "📓 노트 아카이브"
+elif main_section == "동전점지":
+    active_tab = "동전점지"
 elif main_section == "인간지표":
     active_tab = _sub_nav("인간지표 메뉴", "human_sub", HUMAN_SUB_LABELS, HUMAN_SEEN_KEYS)
 elif main_section == "종목분석 ↗":
     active_tab = _sub_nav("종목분석 메뉴", "stock_sub", STOCK_SUB_LABELS)
 else:  # 경제지표
     active_tab = _sub_nav("경제지표 메뉴", "econ_sub", ECON_SUB_LABELS)
+
+# ── 동전점지 ──────────────────────────────────────────────────
+# 50:50 고민될 때 캐릭터가 대신 골라주는 재미 기능. 순수 클라이언트 사이드 상호작용(서버에
+# 결과를 저장하거나 되돌려받을 필요가 없음)이라 Streamlit 위젯 대신 components.html로
+# 자족적인 HTML/CSS/JS 위젯을 그대로 iframe에 심는다. 캐릭터 얼굴은 저작권 문제를 피하려고
+# 전부 직접 그린 벡터 일러스트(SVG)이며, 실제 사진 에셋으로 교체할 계획이면 up/down의
+# svg 값만 갈아끼우면 된다.
+COIN_FLIP_HTML = """
+<style>
+:root {
+  --bg: #0B0F17;
+  --card: #131A26;
+  --card-line: #23303F;
+  --text: #EAEFF5;
+  --text-dim: #8B93A3;
+  --green: #0D6032;
+  --green-bright: #17A863;
+  --mint: #BFE8D3;
+  --yellow: #FFD200;
+  --up: #33C97A;
+  --down: #FF7A63;
+  --font-display: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); }
+.stage {
+  background: radial-gradient(ellipse 620px 360px at 50% -10%, #132A20 0%, var(--bg) 60%);
+  color: var(--text);
+  font-family: var(--font-body);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 1.25rem 1.75rem;
+}
+.card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+.skins {
+  display: flex;
+  gap: 8px;
+  background: var(--card);
+  border: 0.5px solid var(--card-line);
+  border-radius: 999px;
+  padding: 4px;
+}
+.skin-btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.skin-btn:hover { color: var(--text); }
+.skin-btn.active { background: var(--green); color: #EAFBF1; }
+.skin-btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.intro {
+  font-size: 14px;
+  color: var(--text-dim);
+  text-align: center;
+  min-height: 20px;
+}
+.coin-wrap {
+  width: 176px;
+  height: 176px;
+  perspective: 900px;
+}
+.coin {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  position: relative;
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.coin.flipping { animation: flip 1.1s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+@keyframes flip {
+  0% { transform: rotateY(0) translateY(0); }
+  45% { transform: rotateY(900deg) translateY(-46px); }
+  100% { transform: rotateY(1800deg) translateY(0); }
+}
+.coin-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(155deg, var(--green-bright), var(--green));
+  border: 3px solid var(--mint);
+  backface-visibility: hidden;
+}
+.coin-face svg { width: 64%; height: 64%; }
+.cta {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  color: #06341E;
+  background: var(--yellow);
+  border: none;
+  border-radius: 999px;
+  padding: 14px 34px;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+.cta:hover { filter: brightness(1.06); }
+.cta:active { transform: scale(0.97); }
+.cta:disabled { opacity: 0.55; cursor: default; }
+.cta:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+.result {
+  width: 100%;
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
+  text-align: center;
+  border: 0.5px solid var(--card-line);
+  background: var(--card);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.result.show { opacity: 1; transform: translateY(0); }
+.result.up { background: color-mix(in srgb, var(--up) 14%, var(--card)); border-color: color-mix(in srgb, var(--up) 45%, var(--card-line)); }
+.result.down { background: color-mix(in srgb, var(--down) 14%, var(--card)); border-color: color-mix(in srgb, var(--down) 45%, var(--card-line)); }
+.verdict {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+.result.up .verdict { color: var(--up); }
+.result.down .verdict { color: var(--down); }
+.line { font-size: 14px; color: var(--text-dim); margin: 0; }
+.disclaimer {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.6;
+  max-width: 320px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .coin.flipping { animation: none; }
+}
+</style>
+<div class="stage">
+  <div class="card">
+    <div class="skins" role="tablist" aria-label="캐릭터 선택">
+      <button class="skin-btn active" data-skin="dobi" role="tab" aria-selected="true">도비</button>
+      <button class="skin-btn" data-skin="octopus" role="tab" aria-selected="false">문어 도사</button>
+      <button class="skin-btn" data-skin="monkey" role="tab" aria-selected="false">동전 원숭이</button>
+    </div>
+
+    <p class="intro" id="intro">도비가 촉을 세우고 있어요.</p>
+
+    <div class="coin-wrap">
+      <div class="coin" id="coin">
+        <div class="coin-face">
+          <svg id="coinSvg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+    </div>
+
+    <button class="cta" id="askBtn">운명에게 물어보기</button>
+
+    <div class="result" id="result">
+      <p class="verdict" id="verdict">&nbsp;</p>
+      <p class="line" id="line">&nbsp;</p>
+    </div>
+
+    <p class="disclaimer">재미로 보는 동전이에요. 투자 조언이 아니에요 — 최종 판단은 항상 본인의 몫이에요.</p>
+  </div>
+</div>
+<script>
+const DOBI_BODY = '<circle cx="50" cy="46" r="30" fill="#EAFBF1"/><path d="M22 46a28 28 0 0 1 56 0v22c0 4-4 6-7 3l-6-6-6 6c-2 2-5 2-7 0l-6-6-6 6c-2 2-5 2-7 0l-6-6-5 5V46z" fill="#EAFBF1"/>';
+const MONKEY_BODY = '<circle cx="50" cy="48" r="27" fill="#E3C08C"/><circle cx="27" cy="34" r="9" fill="#E3C08C"/><circle cx="73" cy="34" r="9" fill="#E3C08C"/><ellipse cx="50" cy="53" rx="14" ry="11" fill="#F3DDB8"/>';
+
+const CHARACTERS = {
+  dobi: {
+    label: "도비",
+    intro: "도비가 촉을 세우고 있어요.",
+    neutral: DOBI_BODY + '<circle cx="40" cy="44" r="4.2" fill="#0D6032"/><circle cx="61" cy="44" r="4.2" fill="#0D6032"/><circle cx="61" cy="43" r="1.4" fill="#FFD200"/>',
+    up: {
+      verdict: "가자, GO",
+      line: "도비는 이 흐름이 마음에 든대요.",
+      svg: DOBI_BODY + '<circle cx="40" cy="43" r="5.4" fill="#0D6032"/><circle cx="61" cy="43" r="5.4" fill="#0D6032"/><circle cx="42" cy="41" r="1.5" fill="#EAFBF1"/><circle cx="63" cy="41" r="1.5" fill="#EAFBF1"/><path d="M32 35 Q37 30 43 33" stroke="#0D6032" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M58 33 Q64 30 69 35" stroke="#0D6032" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M37 56 Q50 68 64 56" stroke="#0D6032" stroke-width="3.2" stroke-linecap="round" fill="none"/><circle cx="17" cy="30" r="2" fill="#FFD200"/><circle cx="84" cy="32" r="1.6" fill="#FFD200"/><circle cx="50" cy="12" r="1.8" fill="#FFD200"/>',
+    },
+    down: {
+      verdict: "오늘은 패스",
+      line: "도비는 오늘 좀 쉬고 싶대요.",
+      svg: DOBI_BODY + '<path d="M34 45 Q40 41 46 45" stroke="#0D6032" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M55 45 Q61 41 67 45" stroke="#0D6032" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M40 60 Q50 52 60 60" stroke="#0D6032" stroke-width="3.2" stroke-linecap="round" fill="none"/><ellipse cx="45" cy="52" rx="1.6" ry="2.6" fill="#6FA8DC"/>',
+    },
+  },
+  octopus: {
+    label: "문어 도사",
+    intro: "문어 도사가 촉수 여덟 개를 슥 뻗습니다.",
+    neutral: '<circle cx="50" cy="40" r="26" fill="#F4D9B8"/><path d="M22 46c-4 8-3 18 2 24m8-20c-3 10 0 20 6 26m10-26c1 11 1 21-2 27m14-27c4 9 5 19 1 26m8-26c6 7 8 16 5 23" stroke="#F4D9B8" stroke-width="6" stroke-linecap="round" fill="none"/><circle cx="41" cy="38" r="4" fill="#0D6032"/><circle cx="59" cy="38" r="4" fill="#0D6032"/>',
+    up: {
+      verdict: "왼쪽 상자 · 상승",
+      line: "이유는 묻지 마세요. 촉수가 그렇다잖아요.",
+      svg: '<circle cx="50" cy="40" r="26" fill="#F7C989"/><path d="M20 42c-8 2-13 9-12 18m10-22c-6 6-7 16-1 23m10-24c-2 9 1 18 8 23m12-23c3 9 8 16 15 19m8-23c7 4 12 10 13 18" stroke="#F7C989" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M34 36 Q41 30 48 36" stroke="#0D6032" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M52 36 Q59 30 66 36" stroke="#0D6032" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M40 50 Q50 57 60 50" stroke="#0D6032" stroke-width="2.6" stroke-linecap="round" fill="none"/><circle cx="50" cy="19" r="2.2" fill="#FFD200"/>',
+    },
+    down: {
+      verdict: "오른쪽 상자 · 하락",
+      line: "문어의 촉은 틀린 적이... 가끔 있어요.",
+      svg: '<circle cx="50" cy="40" r="26" fill="#C9D3DD"/><path d="M28 52c-2 15-1 27 3 35m13-35c-1 15 1 27 4 35m11-35c1 15 3 27 1 35m14-35c3 14 5 26 2 34" stroke="#C9D3DD" stroke-width="6" stroke-linecap="round" fill="none"/><circle cx="41" cy="40" r="2.6" fill="#5B6673"/><circle cx="59" cy="40" r="2.6" fill="#5B6673"/><path d="M35 33 Q41 36 47 34" stroke="#5B6673" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M53 34 Q59 36 65 33" stroke="#5B6673" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M42 53 Q50 50 58 53" stroke="#5B6673" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
+    },
+  },
+  monkey: {
+    label: "동전 원숭이",
+    intro: "원숭이가 동전을 하늘 높이 튕깁니다.",
+    neutral: MONKEY_BODY + '<circle cx="41" cy="45" r="3.6" fill="#0D6032"/><circle cx="59" cy="45" r="3.6" fill="#0D6032"/>',
+    up: {
+      verdict: "앞면 · 상승",
+      line: "휙- 하고 앞면이 나왔어요!",
+      svg: MONKEY_BODY + '<circle cx="41" cy="44" r="4.6" fill="#3B2A1A"/><circle cx="59" cy="44" r="4.6" fill="#3B2A1A"/><circle cx="42.5" cy="42" r="1.3" fill="#fff"/><circle cx="60.5" cy="42" r="1.3" fill="#fff"/><path d="M34 34 Q41 30 47 33" stroke="#6B4A26" stroke-width="2.4" stroke-linecap="round" fill="none"/><path d="M53 33 Q59 30 66 34" stroke="#6B4A26" stroke-width="2.4" stroke-linecap="round" fill="none"/><ellipse cx="50" cy="58" rx="7" ry="6" fill="#6B4A26"/><circle cx="80" cy="24" r="7" fill="#E3C08C"/><rect x="77" y="8" width="6" height="14" rx="3" fill="#E3C08C"/>',
+    },
+    down: {
+      verdict: "뒷면 · 하락",
+      line: "휙- 하고 뒷면이 나왔어요!",
+      svg: MONKEY_BODY + '<path d="M36 45 L46 43" stroke="#3B2A1A" stroke-width="3" stroke-linecap="round"/><path d="M54 43 L64 45" stroke="#3B2A1A" stroke-width="3" stroke-linecap="round"/><path d="M35 37 L45 40" stroke="#6B4A26" stroke-width="2.6" stroke-linecap="round"/><path d="M55 40 L65 37" stroke="#6B4A26" stroke-width="2.6" stroke-linecap="round"/><path d="M45 60 Q50 58 55 60" stroke="#6B4A26" stroke-width="2.4" stroke-linecap="round" fill="none"/><circle cx="63" cy="60" r="7" fill="#E3C08C"/>',
+    },
+  },
+};
+
+let currentSkin = "dobi";
+let flipping = false;
+
+const introEl = document.getElementById("intro");
+const coinSvg = document.getElementById("coinSvg");
+const coinEl = document.getElementById("coin");
+const askBtn = document.getElementById("askBtn");
+const resultEl = document.getElementById("result");
+const verdictEl = document.getElementById("verdict");
+const lineEl = document.getElementById("line");
+
+function paintSkin(id) {
+  const c = CHARACTERS[id];
+  coinSvg.innerHTML = c.neutral;
+  introEl.textContent = c.intro;
+}
+paintSkin(currentSkin);
+
+document.querySelectorAll(".skin-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (flipping) return;
+    document.querySelectorAll(".skin-btn").forEach((b) => {
+      b.classList.remove("active");
+      b.setAttribute("aria-selected", "false");
+    });
+    btn.classList.add("active");
+    btn.setAttribute("aria-selected", "true");
+    currentSkin = btn.dataset.skin;
+    paintSkin(currentSkin);
+    resultEl.classList.remove("show", "up", "down");
+  });
+});
+
+function flip() {
+  if (flipping) return;
+  flipping = true;
+  askBtn.disabled = true;
+  resultEl.classList.remove("show", "up", "down");
+  coinEl.classList.remove("flipping");
+  void coinEl.offsetWidth;
+  coinEl.classList.add("flipping");
+
+  const isUp = Math.random() < 0.5;
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    coinEl.classList.remove("flipping");
+    const c = CHARACTERS[currentSkin];
+    const outcome = isUp ? c.up : c.down;
+    coinSvg.innerHTML = outcome.svg;
+    verdictEl.textContent = outcome.verdict;
+    lineEl.textContent = outcome.line;
+    resultEl.classList.add("show", isUp ? "up" : "down");
+    flipping = false;
+    askBtn.disabled = false;
+  };
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) {
+    setTimeout(done, 150);
+  } else {
+    // animationend는 탭이 백그라운드거나 일부 브라우저 환경에서 안 붙는 경우가 있어,
+    // 애니메이션 길이(1.1s)보다 살짝 긴 타이머를 안전망으로 같이 걸어둔다.
+    coinEl.addEventListener("animationend", done, { once: true });
+    setTimeout(done, 1300);
+  }
+}
+
+askBtn.addEventListener("click", flip);
+coinEl.addEventListener("click", flip);
+</script>
+"""
+
+if active_tab == "동전점지":
+    st.subheader("동전점지")
+    st.caption(
+        "50:50으로 고민될 때, 캐릭터에게 대신 골라달라고 해보세요. "
+        "재미로 보는 기능이며 투자 조언이 아닙니다."
+    )
+    components.html(COIN_FLIP_HTML, height=620, scrolling=False)
 
 # ── 시장 ────────────────────────────────────────────────────
 if active_tab == "📈 시장":
