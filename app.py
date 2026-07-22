@@ -94,6 +94,86 @@ st.markdown(
     div[class*="st-key-reftable_scroll"] table {
         white-space: nowrap;
     }
+
+    /* ── Dobio 상단 헤더(고정) ─────────────────────────────── */
+    div[class*="st-key-dobio_header"] {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: #0F141E;
+        margin: -1rem -1rem 1.1rem -1rem;
+        padding: 0.7rem 1.5rem 0.9rem 1.5rem;
+        border-bottom: 3px solid #FF4B4B;
+    }
+    /* 로고를 겸하는 '홈으로' 버튼 */
+    div[class*="st-key-dobio_home_btn_wrap"] button {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.2rem 0 !important;
+    }
+    div[class*="st-key-dobio_home_btn_wrap"] button p {
+        font-size: 1.2rem !important;
+        font-weight: 800 !important;
+        color: #EAEFF5 !important;
+        letter-spacing: -0.01em;
+    }
+    div[class*="st-key-dobio_home_btn_wrap"] button:hover p { color: #FFFFFF !important; }
+
+    /* 큰 내비게이션(segmented_control)을 헤더 링크처럼 보이게 재스타일링 */
+    div[class*="st-key-mainnav_wrap"] [data-testid="stWidgetLabel"] {
+        display: none;
+    }
+    div[class*="st-key-mainnav_wrap"] div[role="radiogroup"] {
+        gap: 1.7rem;
+        justify-content: flex-start !important;
+        background: transparent !important;
+        border: none !important;
+        flex-wrap: wrap;
+    }
+    div[class*="st-key-mainnav_wrap"] button {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.35rem 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border-bottom: 2px solid transparent !important;
+    }
+    div[class*="st-key-mainnav_wrap"] button p {
+        color: #B9C0CC !important;
+        font-weight: 600 !important;
+        font-size: 1.0rem !important;
+    }
+    div[class*="st-key-mainnav_wrap"] button:hover p { color: #FFFFFF !important; }
+    div[class*="st-key-mainnav_wrap"] button[data-testid="stBaseButton-segmented_controlActive"] {
+        border-bottom: 2px solid #0D6032 !important;
+    }
+    div[class*="st-key-mainnav_wrap"] button[data-testid="stBaseButton-segmented_controlActive"] p {
+        color: #FFFFFF !important;
+    }
+
+    /* ── 히어로(투자심리 게이지 + 종목분석 검색) ───────────────── */
+    div[class*="st-key-dobio_herocard"] {
+        background: linear-gradient(180deg, rgba(13,96,50,0.35), rgba(15,20,30,0.15));
+        border: 1px solid rgba(13,96,50,0.55);
+        border-radius: 18px;
+        padding: 1.3rem 1.5rem 1.0rem 1.5rem;
+        margin-bottom: 1.4rem;
+    }
+    .dobio-gauge-title { font-size: 0.85rem; color: #9AA3B2; margin-bottom: 0.35rem; }
+    .dobio-gauge-track {
+        position: relative; height: 10px; border-radius: 6px; margin-top: 0.2rem;
+        background: linear-gradient(90deg, #D93025 0%, #F2994A 25%, #FFD200 50%, #8BC34A 75%, #0D6032 100%);
+    }
+    .dobio-gauge-marker {
+        position: absolute; top: -5px; width: 3px; height: 20px;
+        background: #FFFFFF; border-radius: 2px; transform: translateX(-50%);
+        box-shadow: 0 0 4px rgba(0,0,0,0.7);
+    }
+    .dobio-gauge-readout { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.4rem; }
+    .dobio-gauge-score { font-size: 1.3rem; font-weight: 800; color: #EAEFF5; }
+    .dobio-gauge-bucket { font-size: 0.85rem; font-weight: 700; padding: 0.12rem 0.6rem; border-radius: 999px; color: #0F141E; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -125,16 +205,85 @@ REFERENCE_TABLE_MD = """
 | **경제 뉴스 Top 10** | 네이버 뉴스 랭킹 중 경제 키워드가 포함된 전일자 기사 | 네이버 뉴스 랭킹 | 크롤링 | 매일(전일자 기준) |
 """
 
-# ── 헤더 (제목 + 우상단 메뉴) ────────────────────────────────
-title_col, menu_col = st.columns([0.92, 0.08])
-with title_col:
-    st.title("📊 거시경제 투자심리 대시보드")
-    st.caption("주식 투자 참고용 초안 · 데이터 출처: FRED / ISM / 연준(federalreserve.gov) / ECOS / Yahoo Finance")
-with menu_col:
-    with st.popover("☰"):
-        with st.expander("참고자료1. 지표별 최적 출처 요약"):
-            with st.container(key="reftable_scroll"):
-                st.markdown(REFERENCE_TABLE_MD)
+def _mtime_fresh(*paths: str, hours: float = 24) -> bool:
+    """파일들 중 하나라도 최근 hours시간 이내에 갱신됐으면 True (배치 데이터 새로고침 표시용)."""
+    now = datetime.now().timestamp()
+    for p in paths:
+        if os.path.exists(p) and (now - os.path.getmtime(p)) <= hours * 3600:
+            return True
+    return False
+
+
+def _badge_css(container_key: str, fresh_positions: list[int]) -> str:
+    """옵션 목록 중 1부터 시작하는 위치(fresh_positions)에 해당하는 pill 버튼 오른쪽 위에
+    작은 빨간 점 배지를 그린다. 라벨 텍스트는 건드리지 않고 CSS만으로 표시한다."""
+    if not fresh_positions:
+        return ""
+    sel = ", ".join(
+        f'div[class*="st-key-{container_key}"] div[role="radiogroup"] button:nth-child({i})'
+        for i in fresh_positions
+    )
+    sel_after = ", ".join(
+        f'div[class*="st-key-{container_key}"] div[role="radiogroup"] button:nth-child({i})::after'
+        for i in fresh_positions
+    )
+    return f"""
+    <style>
+    {sel} {{ position: relative; overflow: visible; }}
+    {sel_after} {{
+        content: "";
+        position: absolute;
+        top: -3px;
+        right: -2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #FF4B4B;
+        border: 2px solid #0F141E;
+    }}
+    </style>
+    """
+
+
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+HUMAN_KEYWORD_FRESH = _mtime_fresh("sentiment_data.json", "sentiment_history.csv")
+HUMAN_STOCK_FRESH = _mtime_fresh(os.path.join(_DATA_DIR, "latest_run.json"))
+HUMAN_FRESH = HUMAN_KEYWORD_FRESH or HUMAN_STOCK_FRESH
+NOTES_FRESH = _mtime_fresh("notes_index.json")
+
+MAIN_SECTIONS = ["종목분석 ↗", "경제지표", "인간지표", "멀티차트"]
+MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH]
+
+if "main_section" not in st.session_state:
+    st.session_state["main_section"] = "홈"
+
+# ── 헤더 (Dobio 로고 + 큰 내비게이션, 고정) ───────────────────
+with st.container(key="dobio_header"):
+    logo_col, nav_col, menu_col = st.columns([0.16, 0.68, 0.16])
+    with logo_col:
+        with st.container(key="dobio_home_btn_wrap"):
+            if st.button("🟩 dobi:orange[o]", key="dobio_home_btn", help="메인 화면으로"):
+                st.session_state["main_section"] = "홈"
+    with nav_col:
+        with st.container(key="mainnav_wrap"):
+            st.markdown(
+                _badge_css("mainnav_wrap", [i + 1 for i, f in enumerate(MAIN_FRESH_FLAGS) if f]),
+                unsafe_allow_html=True,
+            )
+            _main_sel = st.segmented_control(
+                "메인 메뉴", MAIN_SECTIONS,
+                default=st.session_state["main_section"] if st.session_state["main_section"] in MAIN_SECTIONS else None,
+                label_visibility="collapsed",
+            )
+        if _main_sel:
+            st.session_state["main_section"] = _main_sel
+    with menu_col:
+        with st.popover("☰"):
+            st.caption("거시경제 투자심리 대시보드 · 주식 투자 참고용 초안")
+            st.caption("데이터 출처: FRED / ISM / 연준(federalreserve.gov) / ECOS / Yahoo Finance")
+            with st.expander("참고자료1. 지표별 최적 출처 요약"):
+                with st.container(key="reftable_scroll"):
+                    st.markdown(REFERENCE_TABLE_MD)
 
 # ── 사이드바 ────────────────────────────────────────────────
 with st.sidebar:
@@ -255,6 +404,101 @@ def get_stock_sector_data() -> dict | None:
     return _load_stock_json("latest_sector.json")
 
 
+# ── 메인 히어로: 투자심리 게이지 + 종목 검색 ─────────────────
+def sentiment_bucket(score: float) -> tuple[str, str]:
+    """0~100 심리 점수를 5구간 라벨/색상으로 변환한다(CNN Fear & Greed 스타일)."""
+    if score < 20:
+        return "극단적 공포", "#D93025"
+    if score < 40:
+        return "공포", "#F2994A"
+    if score < 60:
+        return "중립", "#FFD200"
+    if score < 80:
+        return "탐욕", "#8BC34A"
+    return "극단적 탐욕", "#0D6032"
+
+
+def vix_to_sentiment_score(vix_value: float, low: float = 12.0, high: float = 35.0) -> float:
+    """VIX가 낮을수록(안정) 탐욕 쪽, 높을수록(불안) 공포 쪽 점수가 되도록 역변환한다."""
+    score = 100 - (vix_value - low) / (high - low) * 100
+    return max(0.0, min(100.0, score))
+
+
+def render_sentiment_gauge(title: str, score: float, source_caption: str):
+    bucket_label, bucket_color = sentiment_bucket(score)
+    st.markdown(
+        f"""
+        <div class="dobio-gauge-title">{title}</div>
+        <div class="dobio-gauge-track"><div class="dobio-gauge-marker" style="left:{score:.1f}%;"></div></div>
+        <div class="dobio-gauge-readout">
+            <span class="dobio-gauge-score">{score:.0f}</span>
+            <span class="dobio-gauge-bucket" style="background:{bucket_color};">{bucket_label}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(source_caption)
+
+
+if st.session_state["main_section"] == "홈":
+    hero_img_l, hero_img_mid, hero_img_r = st.columns([1, 1.3, 1])
+    with hero_img_mid:
+        st.image("Dobio_main_1200x1200.png", width="stretch")
+
+    with st.container(key="dobio_herocard"):
+        gauge_col1, gauge_col2 = st.columns(2)
+        with gauge_col1:
+            try:
+                sentiment_hist = pd.read_csv("sentiment_history.csv")
+                latest_row = sentiment_hist.iloc[-1]
+                domestic_score = float(latest_row["positive_pct"])
+                domestic_caption = f"국내주식 커뮤니티 여론(긍정 비중) 기준 · {latest_row['date']}"
+            except Exception:  # noqa: BLE001
+                domestic_score = 50.0
+                domestic_caption = "데이터 없음 · 중립(50) 기본값"
+            render_sentiment_gauge("🇰🇷 국내 투자심리 (코스피·코스닥)", domestic_score, domestic_caption)
+        with gauge_col2:
+            try:
+                hero_vix_df = get_series("VIXCLS", str(start_date), api_key)
+                hero_latest_vix = hero_vix_df.dropna(subset=["value"]).iloc[-1]
+                us_score = vix_to_sentiment_score(float(hero_latest_vix["value"]))
+                us_caption = f"VIX {hero_latest_vix['value']:.1f} 기준 · {hero_latest_vix['date'].strftime('%Y-%m-%d')}"
+            except Exception:  # noqa: BLE001
+                us_score = 50.0
+                us_caption = "데이터 없음 · 중립(50) 기본값"
+            render_sentiment_gauge("🇺🇸 미국 투자심리 (나스닥·다우)", us_score, us_caption)
+
+        st.divider()
+
+        hero_search_col, hero_button_col = st.columns([0.82, 0.18])
+        with hero_search_col:
+            hero_stock_query = st.text_input(
+                "종목 검색", placeholder="분석할 종목명을 입력하세요.",
+                label_visibility="collapsed", key="hero_stock_query",
+            )
+        with hero_button_col:
+            hero_search_clicked = st.button("분석하기", type="primary", width="stretch", key="hero_stock_search")
+        st.caption("매일 3회 이용할 수 있습니다.")
+
+        if hero_search_clicked and hero_stock_query:
+            hero_stock_data = get_stock_sentiment_data()
+            hero_match = None
+            if hero_stock_data:
+                for rec in hero_stock_data.get("recommendations", []):
+                    if hero_stock_query.strip() in rec.get("name", ""):
+                        hero_match = rec
+                        break
+            if hero_match:
+                st.session_state["main_section"] = "인간지표"
+                st.session_state["human_sub"] = "🗣️ 종목 심리분석"
+                st.success(f"'{hero_match['name']}' 분석 결과가 있습니다 — 상단 '인간지표' 메뉴에서 확인하세요.")
+            else:
+                st.info(
+                    f"'{hero_stock_query}'는 아직 시가총액 상위 분석 대상에 없습니다. "
+                    "'인간지표' 메뉴의 종목 심리분석에서 현재 분석 가능한 상위 종목 목록을 확인해보세요."
+                )
+
+
 def _render_async_job_status(job, prev_key: str, running_label: str, on_first_done=None):
     """4개(파이프라인/비교/업종/전종목목록) 라이브 작업이 공통으로 쓰는 폴링 상태 표시.
     job은 stockanalyzer.jobs의 AsyncJob 인스턴스 — 이 모듈은 kiwipiepy 등 무거운 걸 전혀
@@ -350,24 +594,53 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
         show_analysis_dialog(title, indicator_key, title, context, cache_key)
 
 
-TAB_LABELS = [
-    "📈 시장", "🐟 물가", "👷 고용", "🏭 경기·연준", "💵 금리", "📐 가치평가", "🧠 인간지표", "🗣️ 종목 심리분석",
-    "📓 노트 아카이브", "📰 뉴스",
-]
+# 상단 큰 내비게이션(종목분석/경제지표/인간지표/멀티차트) 아래에 필요한 경우에만
+# 세부 메뉴(segmented_control)를 추가로 보여준다. st.tabs()는 화면에 안 보이는 탭이어도
+# 매 rerun마다 안의 코드를 전부 실행해서 API 호출이 한 번에 몰리는 문제가 있었기 때문에,
+# 선택된 하나의 active_tab 값만 계산해 아래 코드가 실제로 선택된 것만 실행하게 유지한다.
+ECON_SUB_LABELS = ["🐟 물가", "👷 고용", "🏭 경기", "🏦 연준", "💵 금리", "📐 가치평가", "📰 뉴스"]
+STOCK_SUB_LABELS = ["🔍 종목 검색·비교", "🏭 업종분석"]
+HUMAN_SUB_LABELS = ["🔑 국내주식 키워드", "😨 공포지수", "🗣️ 종목 심리분석"]
+MULTI_SUB_LABELS = ["📈 시장", "📓 노트 아카이브"]
 
-# st.tabs()는 화면에 안 보이는 탭이어도 매 rerun마다 안의 코드를 전부 실행해서,
-# 재배포 직후처럼 캐시가 비어있을 때 8개 탭 몫의 외부 API 호출(~20건)이 한 번에 몰리는
-# 원인이 됐다. segmented_control은 선택값을 코드에서 알 수 있어 선택된 탭만 실행하도록
-# 바꿀 수 있다(진짜 지연 로딩) — 대신 밑줄 탭 대신 알약형 버튼 UI로 바뀐다.
-if "active_tab" not in st.session_state:
-    st.session_state["active_tab"] = TAB_LABELS[0]
 
-_selected_tab = st.segmented_control(
-    "탭 선택", TAB_LABELS, default=st.session_state["active_tab"], label_visibility="collapsed"
-)
-if _selected_tab:
-    st.session_state["active_tab"] = _selected_tab
-active_tab = st.session_state["active_tab"]
+def _sub_nav(label: str, session_key: str, options: list[str], fresh_options: list[str] | None = None) -> str:
+    """옵션 중 최근 갱신된 것에 빨간 점 배지를 붙여 보여주고, 선택된 라벨을 반환한다."""
+    fresh_options = fresh_options or []
+    if session_key not in st.session_state:
+        st.session_state[session_key] = options[0]
+    wrap_key = f"{session_key}_wrap"
+    with st.container(key=wrap_key):
+        positions = [i + 1 for i, opt in enumerate(options) if opt in fresh_options]
+        st.markdown(_badge_css(wrap_key, positions), unsafe_allow_html=True)
+        selected = st.segmented_control(
+            label, options, default=st.session_state[session_key], label_visibility="collapsed"
+        )
+    if selected:
+        st.session_state[session_key] = selected
+    return st.session_state[session_key]
+
+
+main_section = st.session_state["main_section"]
+
+if main_section == "홈":
+    active_tab = None
+elif main_section == "멀티차트":
+    active_tab = _sub_nav(
+        "멀티차트 메뉴", "multi_sub", MULTI_SUB_LABELS,
+        ["📓 노트 아카이브"] if NOTES_FRESH else [],
+    )
+elif main_section == "인간지표":
+    _human_fresh = []
+    if HUMAN_KEYWORD_FRESH:
+        _human_fresh.append("🔑 국내주식 키워드")
+    if HUMAN_STOCK_FRESH:
+        _human_fresh.append("🗣️ 종목 심리분석")
+    active_tab = _sub_nav("인간지표 메뉴", "human_sub", HUMAN_SUB_LABELS, _human_fresh)
+elif main_section == "종목분석 ↗":
+    active_tab = _sub_nav("종목분석 메뉴", "stock_sub", STOCK_SUB_LABELS)
+else:  # 경제지표
+    active_tab = _sub_nav("경제지표 메뉴", "econ_sub", ECON_SUB_LABELS)
 
 # ── 시장 ────────────────────────────────────────────────────
 if active_tab == "📈 시장":
@@ -592,7 +865,7 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 경기·연준 (한국 경기종합지수 + 수동 입력 지표) ──────────
-if active_tab == "🏭 경기·연준":
+if active_tab == "🏭 경기":
     st.subheader("한국 경기종합지수 (선행·동행 순환변동치)")
     st.caption(
         "선행지수순환변동치는 향후 경기 방향, 동행지수순환변동치는 현재 경기 국면을 보여줍니다. "
@@ -653,8 +926,7 @@ if active_tab == "🏭 경기·연준":
     else:
         st.info("위 표에 발표일(release_date)·기간(period)·수치(pmi)를 입력하면 추세 차트가 표시됩니다.")
 
-    st.divider()
-
+if active_tab == "🏦 연준":
     st.subheader("FOMC (점도표 · 파월 기자회견)")
     st.caption(
         "연준 위원들의 향후 금리 전망 중간값(점도표)과 성명서·기자회견. "
@@ -711,9 +983,12 @@ if active_tab == "💵 금리":
             end_ym = pd.Timestamp.today().strftime("%Y%m")
             kr_base = get_ecos_series(BASE_RATE_ITEM, ecos_key, start_ym, end_ym, stat_code=BASE_RATE_STAT_CODE)[
                 ["date", "value"]
-            ].rename(columns={"value": "한국은행 기준금리"})
-            merged = pd.merge(merged, kr_base, on="date", how="left")
-            merged["한국은행 기준금리"] = merged["한국은행 기준금리"].ffill()
+            ].rename(columns={"value": "한국은행 기준금리"}).sort_values("date")
+            # ECOS는 월별(그 달 1일자로 스탬프) 값이라, 미국 거래일 기준인 merged와 날짜가
+            # 정확히 일치하는 경우만 값이 들어가던 기존 merge+ffill 방식은 1일이 주말/공휴일이면
+            # 그 달의 갱신값이 통째로 누락됐다(예: 금리가 인상돼도 화면에 반영 안 되는 원인).
+            # merge_asof(backward)로 "그 시점 기준 가장 최근 발표값"을 항상 채우도록 고친다.
+            merged = pd.merge_asof(merged.sort_values("date"), kr_base, on="date", direction="backward")
             rate_cols.append("한국은행 기준금리")
             rate_colors.append("#08306B")  # 진한 파란색
         else:
@@ -739,10 +1014,6 @@ if active_tab == "💵 금리":
             if "한국은행 기준금리" in merged and pd.notna(latest["한국은행 기준금리"]):
                 st.metric("한국은행 기준금리", f"{latest['한국은행 기준금리']:.2f}%")
 
-        rate_notes = notes_for_tags(get_notes(), ["Fed정책/금리", "수익률곡선/침체신호"])
-        if not rate_notes.empty:
-            st.caption("점선은 이 기간에 작성한 관련 노트입니다. 마우스를 올리면 제목·요약이 보입니다.")
-
         long_rates = merged.melt(
             id_vars="date", value_vars=rate_cols, var_name="구분", value_name="금리(%)"
         ).dropna(subset=["금리(%)"])
@@ -755,12 +1026,11 @@ if active_tab == "💵 금리":
             color_range=rate_colors,
             y_title="금리(%)",
             key="rates_curve",
-            notes_df=rate_notes,
         )
         st.markdown("**장단기금리차 (10Y-2Y 스프레드)**")
         render_zoomable_chart(
             merged, x="date", y="10Y-2Y 스프레드", y_title="%p", rule_y=0, rule_label="역전 기준선(0)",
-            key="rates_spread", notes_df=rate_notes,
+            key="rates_spread",
         )
     except Exception as e:  # noqa: BLE001
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
@@ -918,7 +1188,7 @@ if active_tab == "📐 가치평가":
         st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
 # ── 인간지표 (시장 심리) ──────────────────────────────────────
-if active_tab == "🧠 인간지표":
+if active_tab == "🔑 국내주식 키워드":
     st.subheader("국내주식 인간지표")
     st.caption(
         "국내 주식 커뮤니티의 전날 게시글을 시간대 4구간으로 나눠, "
@@ -984,8 +1254,7 @@ if active_tab == "🧠 인간지표":
                     else:
                         st.caption("매칭된 키워드가 없습니다.")
 
-    st.divider()
-
+if active_tab == "😨 공포지수":
     st.subheader("VIX (공포지수)")
     st.caption(
         "S&P500 옵션 내재변동성으로 산출하는 CBOE 변동성지수. 20 이하는 안정, 30 이상은 공포 국면으로 흔히 해석됩니다. "
@@ -1121,8 +1390,8 @@ if active_tab == "🗣️ 종목 심리분석":
             else:
                 st.caption("관측일수가 부족해(종목당 3일 미만) 계산된 상관계수가 아직 없습니다. 데이터가 쌓일수록 채워집니다.")
 
-    st.divider()
-    st.markdown("**🔍 종목 검색·비교**")
+if active_tab == "🔍 종목 검색·비교":
+    st.subheader("종목 검색·비교")
     st.caption("원하는 종목을 최대 6개 골라 기간 전체 여론(긍정/부정) 우세 방향과 실제 등락 방향이 맞았는지 비교합니다. 실시간 크롤링이라 종목·기간에 따라 시간이 걸릴 수 있습니다.")
     with st.expander("펼치기", expanded=False):
         universe = _load_stock_json("stock_universe.json")
@@ -1180,8 +1449,8 @@ if active_tab == "🗣️ 종목 심리분석":
                 })
                 st.dataframe(cdf_display, width="stretch", hide_index=True)
 
-    st.divider()
-    st.markdown("**🏭 업종분석**")
+if active_tab == "🏭 업종분석":
+    st.subheader("업종분석")
     st.caption("선택한 업종의 거래대금 상위 종목을 PER·PBR 가치평가 + 수급으로 그룹화합니다. 실시간 크롤링(최대 30종목)이라 다소 걸릴 수 있습니다.")
     with st.expander("펼치기", expanded=False):
         from stockanalyzer.crawler.sector import BROAD_SECTOR_GROUPS
