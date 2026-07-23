@@ -135,10 +135,22 @@ def _judge(pos: int, neg: int, price_change_pct):
 
 
 def analyze_stock_window(code: str, name: str, days: int = 1) -> dict:
-    """단일 종목에 대해 최근 `days`일 전체의 지표를 계산한다."""
-    since_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
-
+    """단일 종목에 대해 최근 `days`거래일 전체의 지표를 계산한다.
+    달력일이 아니라 실제 거래일(주말·공휴일 제외) 기준으로 기간을 잡는다 — price_rows 자체가
+    네이버 시세 페이지에서 실제로 장이 열렸던 날짜만 담고 있으므로, 그 목록에서 최근 N개를
+    세어 since_date를 정하면 자연히 휴장일이 빠진다(예: 최근 10일 선택 시 공휴일·주말은 건너뛰고
+    실제로 거래된 10개 날짜만 집계)."""
     per_pbr = fetch_per_pbr(code)
+
+    price_rows = fetch_price_history(code, pages=PRICE_LOOKBACK_PAGES)
+    trading_dates = sorted({r["date"] for r in price_rows if r.get("close") is not None}, reverse=True)
+    if len(trading_dates) >= days:
+        since_date = trading_dates[days - 1]
+    elif trading_dates:
+        since_date = trading_dates[-1]
+    else:
+        # 시세를 아예 못 가져온 예외적인 경우에만 달력일로 대체
+        since_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
     naver_posts, covered_full_window = fetch_board_posts_since(code, since_date, max_pages=BOARD_MAX_PAGES)
     naver_posts = score_posts(naver_posts)
@@ -149,7 +161,6 @@ def analyze_stock_window(code: str, name: str, days: int = 1) -> dict:
     news_posts = score_posts(news_posts)
     news_tally = _tally(news_posts)
 
-    price_rows = fetch_price_history(code, pages=PRICE_LOOKBACK_PAGES)
     window_rows = sorted([r for r in price_rows if r["date"] >= since_date], key=lambda r: r["date"])
     if window_rows:
         baseline, latest = window_rows[0]["close"], window_rows[-1]["close"]

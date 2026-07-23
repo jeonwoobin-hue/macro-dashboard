@@ -117,7 +117,8 @@ st.markdown(
     div[class*="st-key-scrollrow"] .dday-badge-line {
         min-height: 1.3rem;
         font-size: 0.8rem;
-        color: #9AA4B2;
+        font-weight: 700;
+        color: #17A863;
         margin-bottom: 0.2rem;
     }
 
@@ -2050,18 +2051,22 @@ if active_tab == "🔍 종목 검색·비교":
                     return " ".join(parts) if parts else "—"
 
                 cdf = pd.DataFrame(compare_result["results"])
+                def _count_with_ratio(count, ratio):
+                    return f"{count}({ratio:.1f}%)" if pd.notna(ratio) else str(count)
+
                 cdf_display = cdf.assign(
-                    일치=cdf["match"].map({True: "✅ 일치", False: "❌ 불일치", None: "—"}),
+                    일치여부=cdf["match"].map({True: "✅ 일치", False: "❌ 불일치", None: "—"}),
                     여론=cdf.apply(_sentiment_label, axis=1),
                     개미지수=cdf["code"].map(_hit_rate_label),
                     핫키워드=cdf.apply(_keyword_tags, axis=1),
+                    긍정=cdf.apply(lambda r: _count_with_ratio(r["pos_count"], r.get("pos_ratio")), axis=1),
+                    부정=cdf.apply(lambda r: _count_with_ratio(r["neg_count"], r.get("neg_ratio")), axis=1),
                 )[[
-                    "name", "per", "pbr", "price_now", "price_change_pct",
-                    "pos_count", "neg_count", "여론", "price_direction", "일치", "개미지수", "핫키워드",
+                    "name", "price_now", "price_change_pct",
+                    "긍정", "부정", "여론", "price_direction", "일치여부", "개미지수", "핫키워드",
                 ]].rename(columns={
-                    "name": "종목명", "per": "PER", "pbr": "PBR", "price_now": "현재가",
-                    "price_change_pct": "기간등락률(%)", "pos_count": "긍정글", "neg_count": "부정글",
-                    "price_direction": "실제방향",
+                    "name": "종목명", "price_now": "현재가",
+                    "price_change_pct": "기간등락률(%)", "price_direction": "실제방향",
                 })
                 st.dataframe(cdf_display, width="stretch", hide_index=True)
                 st.caption(
@@ -2085,22 +2090,25 @@ if active_tab == "🔍 종목 검색·비교":
                         max_abs = daily_df["net_sentiment"].abs().max() or 1
                         daily_df["marker_y"] = max_abs * 1.25
 
+                        # x축은 날짜 문자열(YYYY-MM-DD)을 temporal(T)로 넘겨 "7.16" 같은 짧은 포맷 +
+                        # 가로 라벨(labelAngle=0)을 쓴다. y축 제목은 길면 서로 겹쳐 보여서 짧게 줄였다.
+                        x_enc = alt.X("date:T", title="날짜", axis=alt.Axis(format="%-m.%-d", labelAngle=0))
                         bar = alt.Chart(daily_df).mark_bar().encode(
-                            x=alt.X("date:O", title="날짜"),
-                            y=alt.Y("net_sentiment:Q", title="여론 지수(긍정글-부정글)"),
+                            x=x_enc,
+                            y=alt.Y("net_sentiment:Q", title="여론지수", axis=alt.Axis(titlePadding=8)),
                             color=alt.condition(alt.datum.net_sentiment >= 0, alt.value("#2e7d32"), alt.value("#c62828")),
                             tooltip=[
-                                alt.Tooltip("date:N", title="날짜"), alt.Tooltip("pos_count:Q", title="긍정글"),
+                                alt.Tooltip("date:T", title="날짜", format="%Y-%m-%d"), alt.Tooltip("pos_count:Q", title="긍정글"),
                                 alt.Tooltip("neg_count:Q", title="부정글"), alt.Tooltip("total_posts:Q", title="전체"),
                             ],
                         )
                         line = alt.Chart(daily_df).mark_line(point=True, color="#4C78A8").encode(
-                            x=alt.X("date:O"),
-                            y=alt.Y("price_change_pct:Q", title="일별 등락률(%)"),
-                            tooltip=[alt.Tooltip("date:N", title="날짜"), alt.Tooltip("price_change_pct:Q", title="등락률(%)", format="+.2f")],
+                            x=x_enc,
+                            y=alt.Y("price_change_pct:Q", title="등락률(%)", axis=alt.Axis(titlePadding=8)),
+                            tooltip=[alt.Tooltip("date:T", title="날짜", format="%Y-%m-%d"), alt.Tooltip("price_change_pct:Q", title="등락률(%)", format="+.2f")],
                         )
                         markers = alt.Chart(daily_df).mark_text(fontSize=14).encode(
-                            x=alt.X("date:O"), y=alt.Y("marker_y:Q"), text="match_icon:N",
+                            x=x_enc, y=alt.Y("marker_y:Q"), text="match_icon:N",
                         )
                         st.altair_chart(
                             alt.layer(bar, markers, line).resolve_scale(y="independent").properties(height=280),
@@ -2120,9 +2128,12 @@ if active_tab == "🔍 종목 검색·비교":
                         st.dataframe(detail_display, width="stretch", hide_index=True)
 
                 with st.expander("원문 게시글 보기 (긍정/부정 라벨)", expanded=False):
+                    label_filter = st.multiselect(
+                        "라벨 필터", ["긍정", "중립", "부정"], default=["긍정", "중립", "부정"], key="posts_label_filter"
+                    )
                     for r in compare_result["results"]:
-                        posts_sample = r.get("posts_sample") or []
-                        st.markdown(f"**{r['name']}** · 전체 {r.get('total_posts', 0)}건 중 최근 {len(posts_sample)}건")
+                        posts_sample = [p for p in (r.get("posts_sample") or []) if p["label"] in label_filter]
+                        st.markdown(f"**{r['name']}** · 전체 {r.get('total_posts', 0)}건 중 최근 {len(r.get('posts_sample') or [])}건(필터 적용 {len(posts_sample)}건)")
                         if posts_sample:
                             st.dataframe(
                                 pd.DataFrame(posts_sample).rename(
@@ -2131,7 +2142,7 @@ if active_tab == "🔍 종목 검색·비교":
                                 width="stretch", hide_index=True, height=200,
                             )
                         else:
-                            st.caption("게시글이 없습니다.")
+                            st.caption("해당 라벨의 게시글이 없습니다.")
 
 if active_tab == "🏭 업종분석":
     st.subheader("종목분석")
