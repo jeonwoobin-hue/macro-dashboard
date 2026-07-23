@@ -216,13 +216,50 @@ st.markdown(
         color: #FFFFFF !important;
     }
 
-    /* ── 히어로(투자심리 게이지 + 종목분석 검색) ───────────────── */
-    div[class*="st-key-dobio_herocard"] {
-        background: linear-gradient(180deg, rgba(13,96,50,0.35), rgba(15,20,30,0.15));
-        border: 1px solid rgba(13,96,50,0.55);
-        border-radius: 18px;
-        padding: 1.3rem 1.5rem 1.0rem 1.5rem;
+    /* ── 히어로(로고 + 태그라인 + 종목 검색) ───────────────── */
+    div[class*="st-key-dobio_hero"] {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 3.2rem 1rem 0.5rem 1rem;
+    }
+    .dobio-hero-logo {
+        width: min(300px, 60vw);
+        height: auto;
         margin-bottom: 1.4rem;
+        border-radius: 24px;
+    }
+    .dobio-hero-tagline {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #E3E8EF;
+        letter-spacing: 0.01em;
+        margin-bottom: 2rem;
+    }
+    /* dobio_search_row는 이름을 dobio_hero와 안 겹치게 지었다 — [class*="st-key-dobio_hero"]가
+       부분일치라 "dobio_hero_"로 시작하는 다른 컨테이너까지 같이 flex-column을 먹어서
+       입력창+버튼 가로 배치가 세로로 깨지는 문제가 있었다. */
+    div[class*="st-key-dobio_search_row"] {
+        max-width: 620px;
+        width: 100%;
+        margin: 0 auto;
+    }
+    /* ── 오늘의 투자심리 게이지 카드 ───────────────── */
+    div[class*="st-key-dobio_sentiment_card"] {
+        background: linear-gradient(180deg, rgba(13,96,50,0.28), rgba(15,20,30,0.12));
+        border: 1px solid rgba(13,96,50,0.5);
+        border-radius: 18px;
+        padding: 1.2rem 1.5rem 1.0rem 1.5rem;
+        margin-top: 1rem;
+    }
+    .dobio-sentiment-label {
+        font-size: 0.8rem;
+        color: #9AA3B2;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.6rem;
     }
     .dobio-gauge-title { font-size: 0.85rem; color: #9AA3B2; margin-bottom: 0.35rem; }
     .dobio-gauge-track {
@@ -367,6 +404,7 @@ def _b64_file(path: str) -> str:
 
 
 _LOGO_B64 = _b64_file("Dobio_header_logo.png")
+_HERO_IMAGE_B64 = _b64_file("Dobio_main_1200x1200.png")
 
 # ── 헤더 (Dobio 로고 + 큰 내비게이션, 고정) ───────────────────
 with st.container(key="dobio_header"):
@@ -591,40 +629,24 @@ def render_sentiment_gauge(title: str, score: float, source_caption: str):
 
 
 if st.session_state["main_section"] == "홈":
-    with st.container(key="dobio_herocard"):
-        gauge_col1, gauge_col2 = st.columns(2)
-        with gauge_col1:
-            try:
-                sentiment_hist = pd.read_csv("sentiment_history.csv")
-                latest_row = sentiment_hist.iloc[-1]
-                domestic_score = float(latest_row["positive_pct"])
-                domestic_caption = f"국내주식 커뮤니티 여론(긍정 비중) 기준 · {latest_row['date']}"
-            except Exception:  # noqa: BLE001
-                domestic_score = 50.0
-                domestic_caption = "데이터 없음 · 중립(50) 기본값"
-            render_sentiment_gauge("🇰🇷 국내 투자심리 (코스피·코스닥)", domestic_score, domestic_caption)
-        with gauge_col2:
-            try:
-                hero_vix_df = get_series("VIXCLS", str(start_date), api_key)
-                hero_latest_vix = hero_vix_df.dropna(subset=["value"]).iloc[-1]
-                us_score = vix_to_sentiment_score(float(hero_latest_vix["value"]))
-                us_caption = f"VIX {hero_latest_vix['value']:.1f} 기준 · {hero_latest_vix['date'].strftime('%Y-%m-%d')}"
-            except Exception:  # noqa: BLE001
-                us_score = 50.0
-                us_caption = "데이터 없음 · 중립(50) 기본값"
-            render_sentiment_gauge("🇺🇸 미국 투자심리 (나스닥·다우)", us_score, us_caption)
-
-        st.divider()
-
-        hero_search_col, hero_button_col = st.columns([0.82, 0.18])
-        with hero_search_col:
-            hero_stock_query = st.text_input(
-                "종목 검색", placeholder="분석할 종목명을 입력하세요.",
-                label_visibility="collapsed", key="hero_stock_query",
-            )
-        with hero_button_col:
-            hero_search_clicked = st.button("분석하기", type="primary", width="stretch", key="hero_stock_search")
-        st.caption("매일 3회 이용할 수 있습니다.")
+    with st.container(key="dobio_hero"):
+        st.markdown(
+            f"""
+            <img class="dobio-hero-logo" src="data:image/png;base64,{_HERO_IMAGE_B64}" alt="Dobio">
+            <div class="dobio-hero-tagline">거대한 흐름에 맞서지 않고 그 위에 올라탄다.</div>
+            """,
+            unsafe_allow_html=True,
+        )
+        with st.container(key="dobio_search_row"):
+            hero_search_col, hero_button_col = st.columns([0.82, 0.18])
+            with hero_search_col:
+                hero_stock_query = st.text_input(
+                    "종목 검색", placeholder="분석하고싶은 종목명을 입력해주세요.",
+                    label_visibility="collapsed", key="hero_stock_query",
+                )
+            with hero_button_col:
+                hero_search_clicked = st.button("분석하기", type="primary", width="stretch", key="hero_stock_search")
+            st.caption("매일 3회 이용할 수 있습니다.")
 
         if hero_search_clicked and hero_stock_query:
             hero_stock_data = get_stock_sentiment_data()
@@ -648,6 +670,30 @@ if st.session_state["main_section"] == "홈":
                     f"'{hero_stock_query}'는 아직 시가총액 상위 분석 대상에 없습니다. "
                     "'인간지표' 메뉴의 종목 심리분석에서 현재 분석 가능한 상위 종목 목록을 확인해보세요."
                 )
+
+    with st.container(key="dobio_sentiment_card"):
+        st.markdown('<div class="dobio-sentiment-label">오늘의 투자심리</div>', unsafe_allow_html=True)
+        gauge_col1, gauge_col2 = st.columns(2)
+        with gauge_col1:
+            try:
+                sentiment_hist = pd.read_csv("sentiment_history.csv")
+                latest_row = sentiment_hist.iloc[-1]
+                domestic_score = float(latest_row["positive_pct"])
+                domestic_caption = f"국내주식 커뮤니티 여론(긍정 비중) 기준 · {latest_row['date']}"
+            except Exception:  # noqa: BLE001
+                domestic_score = 50.0
+                domestic_caption = "데이터 없음 · 중립(50) 기본값"
+            render_sentiment_gauge("🇰🇷 국내 투자심리 (코스피·코스닥)", domestic_score, domestic_caption)
+        with gauge_col2:
+            try:
+                hero_vix_df = get_series("VIXCLS", str(start_date), api_key)
+                hero_latest_vix = hero_vix_df.dropna(subset=["value"]).iloc[-1]
+                us_score = vix_to_sentiment_score(float(hero_latest_vix["value"]))
+                us_caption = f"VIX {hero_latest_vix['value']:.1f} 기준 · {hero_latest_vix['date'].strftime('%Y-%m-%d')}"
+            except Exception:  # noqa: BLE001
+                us_score = 50.0
+                us_caption = "데이터 없음 · 중립(50) 기본값"
+            render_sentiment_gauge("🇺🇸 미국 투자심리 (나스닥·다우)", us_score, us_caption)
 
 
 def _render_async_job_status(job, prev_key: str, running_label: str, on_first_done=None):
