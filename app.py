@@ -417,7 +417,7 @@ def _b64_file(path: str) -> str:
 
 
 _LOGO_B64 = _b64_file("Dobio_header_logo.png")
-_HERO_IMAGE_B64 = _b64_file("Dobio_main_hero_tight.png")
+_HERO_IMAGE_B64 = _b64_file("Dobio_main1.png")
 
 # ── 헤더 (Dobio 로고 + 큰 내비게이션, 고정) ───────────────────
 with st.container(key="dobio_header"):
@@ -659,7 +659,6 @@ if st.session_state["main_section"] == "홈":
                 )
             with hero_button_col:
                 hero_search_clicked = st.button("분석하기", type="primary", width="stretch", key="hero_stock_search")
-            st.caption("매일 3회 이용할 수 있습니다.")
 
         if hero_search_clicked and hero_stock_query:
             hero_stock_data = get_stock_sentiment_data()
