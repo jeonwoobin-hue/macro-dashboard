@@ -178,6 +178,17 @@ st.markdown(
         max-width: 1280px;
         margin: 0 auto;
     }
+    /* 로고/내비게이션/☰ 메뉴 3개 컬럼이 기본값(상단 정렬)이라 내용 높이가 서로 달라(라벨
+       숨김 처리 등으로 생기는 여백 차이) ☰ 버튼이 nav 글자보다 위로 붕 떠 보였다.
+       셋을 서로 기준으로 세로 중앙 정렬한다. */
+    div[class*="st-key-dobio_header_inner"] div[data-testid="stHorizontalBlock"] {
+        align-items: center;
+    }
+    /* align-items:center로도 ☰ 팝오버 버튼만 8px 정도 위로 붕 떠 보이는 잔여 오차가 있어
+       (팝오버 트리거 버튼 자체의 내부 배치 방식 때문으로 보임) 살짝 더 내려 맞춘다. */
+    div[class*="st-key-dobio_header_inner"] button[data-testid="stPopoverButton"] {
+        margin-top: 16px;
+    }
     div[data-testid="stAppViewContainer"] .block-container {
         max-width: 1280px;
         margin: 0 auto;
@@ -188,7 +199,7 @@ st.markdown(
         display: none;
     }
     div[class*="st-key-mainnav_wrap"] div[role="radiogroup"] {
-        gap: 1.7rem;
+        gap: 2.6rem;
         justify-content: flex-start !important;
         background: transparent !important;
         border: none !important;
@@ -225,14 +236,16 @@ st.markdown(
         padding: 3.2rem 1rem 0.5rem 1rem;
     }
     .dobio-hero-logo {
+        display: block;
         width: min(300px, 60vw);
         height: auto;
-        margin-bottom: 1.4rem;
+        margin: 0 auto 1.4rem auto;
         border-radius: 24px;
     }
     .dobio-hero-tagline {
-        font-size: 1.2rem;
-        font-weight: 600;
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 400;
         color: #E3E8EF;
         letter-spacing: 0.01em;
         margin-bottom: 2rem;
@@ -404,7 +417,7 @@ def _b64_file(path: str) -> str:
 
 
 _LOGO_B64 = _b64_file("Dobio_header_logo.png")
-_HERO_IMAGE_B64 = _b64_file("Dobio_main_1200x1200.png")
+_HERO_IMAGE_B64 = _b64_file("Dobio_main_hero_tight.png")
 
 # ── 헤더 (Dobio 로고 + 큰 내비게이션, 고정) ───────────────────
 with st.container(key="dobio_header"):
