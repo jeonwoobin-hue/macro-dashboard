@@ -1,4 +1,5 @@
 import base64
+import calendar
 import json
 import os
 from datetime import datetime, time as dtime, timedelta
@@ -377,7 +378,7 @@ with st.container(key="dobio_header"):
                     """,
                     unsafe_allow_html=True,
                 )
-                if st.button("dobio", key="dobio_home_btn", help="메인 화면으로"):
+                if st.button("dobio", key="dobio_home_btn"):
                     st.session_state["main_section"] = "홈"
     with nav_col:
         with st.container(key="mainnav_wrap"):
@@ -396,23 +397,26 @@ with st.container(key="dobio_header"):
         with st.popover("☰", width=980):
             st.caption("거시경제 투자심리 대시보드 · 주식 투자 참고용 초안")
             st.caption("데이터 출처: FRED / ISM / 연준(federalreserve.gov) / ECOS / Yahoo Finance")
-            st.markdown("**참고자료1. 지표별 최적 출처 요약**")
             # st.expander 안에 캔버스 기반 st.dataframe을 넣으면, 펼쳐지기 전(0폭) 상태로
             # 마운트된 뒤 폭 재계산이 안 돼 컬럼이 잘려 보이는 버그가 있었다(창 크기를 강제로
-            # 바꿔야만 다시 그려짐) — 접었다 펴는 대신 팝오버 열릴 때 바로 그린다.
-            st.dataframe(
-                pd.DataFrame(REFERENCE_TABLE_ROWS),
-                width="stretch",
-                height=440,
-                hide_index=True,
-                column_config={
-                    "지표": st.column_config.TextColumn(width="medium"),
-                    "핵심 정의": st.column_config.TextColumn(width="large"),
-                    "최적 출처": st.column_config.TextColumn(width="medium"),
-                    "수집 방식": st.column_config.TextColumn(width="medium"),
-                    "발표 주기": st.column_config.TextColumn(width="medium"),
-                },
-            )
+            # 바꿔야만 다시 그려짐). st.data_editor(disabled=True)는 같은 파일의 ISM/FOMC
+            # 원본 데이터 expander에서 이미 문제 없이 쓰이고 있어 그 패턴을 그대로 재사용한다.
+            with st.expander("참고자료1. 지표별 최적 출처 요약", expanded=False):
+                st.data_editor(
+                    pd.DataFrame(REFERENCE_TABLE_ROWS),
+                    width="stretch",
+                    height=440,
+                    hide_index=True,
+                    disabled=True,
+                    key="reference_table_1",
+                    column_config={
+                        "지표": st.column_config.TextColumn(width="medium"),
+                        "핵심 정의": st.column_config.TextColumn(width="large"),
+                        "최적 출처": st.column_config.TextColumn(width="medium"),
+                        "수집 방식": st.column_config.TextColumn(width="medium"),
+                        "발표 주기": st.column_config.TextColumn(width="medium"),
+                    },
+                )
 
 # ── 사이드바 ────────────────────────────────────────────────
 with st.sidebar:
@@ -679,6 +683,85 @@ def render_sector_job_status():
     )
 
 
+# ── 거시경제 캘린더 D-Day 배지 ─────────────────────────────────
+# FRED/ISM/FOMC의 실제 발표 캘린더 API를 새로 붙이는 대신(레포 메모의 FRED IP 레이트리밋 이슈를
+# 감안해 API 호출을 늘리지 않는 쪽을 택함), REFERENCE_TABLE_ROWS의 '발표 주기' 텍스트에 이미
+# 쓰여 있는 규칙(매월 첫째 금요일 등)을 코드로 계산해 근사치 D-day를 보여준다. 공휴일은 반영하지
+# 않으므로 실제 발표일과 하루 이틀 어긋날 수 있다.
+def _next_weekday_on_or_after(d: datetime, weekday: int) -> datetime:
+    """d 이후(포함) 가장 가까운 해당 요일(월=0..일=6)의 날짜."""
+    return d + timedelta(days=(weekday - d.weekday()) % 7)
+
+
+def _nth_weekday_of_month(year: int, month: int, weekday: int, n: int) -> datetime:
+    """해당 연/월의 n번째 요일(예: 첫째 금요일)."""
+    first = datetime(year, month, 1)
+    return first + timedelta(days=(weekday - first.weekday()) % 7 + 7 * (n - 1))
+
+
+def _nth_business_day_of_month(year: int, month: int, n: int) -> datetime:
+    """해당 연/월의 n번째 영업일(주말만 제외한 근사치, 공휴일 미반영)."""
+    d = datetime(year, month, 1)
+    count = 0
+    while True:
+        if d.weekday() < 5:
+            count += 1
+            if count == n:
+                return d
+        d += timedelta(days=1)
+
+
+def _last_business_day_of_month(year: int, month: int) -> datetime:
+    d = datetime(year, month, calendar.monthrange(year, month)[1])
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
+
+
+def _next_monthly(compute_fn) -> datetime:
+    """이번 달 기준 계산일이 이미 지났으면 다음 달로 다시 계산한다."""
+    today = datetime.now()
+    candidate = compute_fn(today.year, today.month)
+    if candidate.date() < today.date():
+        year, month = (today.year + 1, 1) if today.month == 12 else (today.year, today.month + 1)
+        candidate = compute_fn(year, month)
+    return candidate
+
+
+def _dday_badge(target_date: datetime) -> str:
+    days = (target_date.date() - datetime.now().date()).days
+    if days < 0:
+        return ""
+    return " `[D-DAY]`" if days == 0 else f" `[D-{days}]`"
+
+
+RELEASE_SCHEDULES = {
+    "nfp_family": lambda: _next_monthly(lambda y, m: _nth_weekday_of_month(y, m, 4, 1)),  # 매월 첫째 금요일
+    "jobless_claims": lambda: _next_weekday_on_or_after(datetime.now(), 3),  # 매주 목요일
+    "ism_pmi": lambda: _next_monthly(lambda y, m: _nth_business_day_of_month(y, m, 3)),  # 매월 3영업일경
+    "core_cpi": lambda: _next_monthly(lambda y, m: _nth_business_day_of_month(y, m, 10)),  # 매월 중순 근사
+    "core_pce": lambda: _next_monthly(lambda y, m: _last_business_day_of_month(y, m)),  # 매월 말
+}
+
+
+def release_dday_badge(kind: str) -> str:
+    """지표별 발표 주기 규칙 기반 다음 발표일까지 D-day 배지(근사치)."""
+    try:
+        return _dday_badge(RELEASE_SCHEDULES[kind]())
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def fomc_dday_badge() -> str:
+    """manual_fomc.csv에 사용자가 입력해둔 meeting_date 중 가장 가까운 미래 회의일 기준."""
+    try:
+        dates = pd.to_datetime(pd.read_csv("manual_fomc.csv")["meeting_date"], errors="coerce").dropna()
+        future = dates[dates.dt.date >= datetime.now().date()]
+        return _dday_badge(future.min().to_pydatetime()) if not future.empty else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def show_latest_metric(df: pd.DataFrame, col: str, label: str, suffix: str = "%"):
     latest = df.dropna(subset=[col]).iloc[-1]
     prev = df.dropna(subset=[col]).iloc[-2] if len(df.dropna(subset=[col])) > 1 else None
@@ -874,7 +957,7 @@ html, body { margin: 0; background: var(--bg); }
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 16px;
-  color: #06341E;
+  color: #000000;
   background: var(--yellow);
   border: none;
   border-radius: 999px;
@@ -1124,7 +1207,7 @@ if active_tab == "🐟 물가":
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-            st.subheader("Core CPI (MoM)")
+            st.subheader("Core CPI (MoM)" + release_dday_badge("core_cpi"))
             st.caption("에너지·식품을 제외한 소비자물가지수의 전월 대비 변화율. 연준의 근원 인플레이션 판단 지표.")
             cpi_latest_date = None
             try:
@@ -1144,7 +1227,7 @@ if active_tab == "🐟 물가":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c2:
-            st.subheader("Core PCE (MoM)")
+            st.subheader("Core PCE (MoM)" + release_dday_badge("core_pce"))
             st.caption("에너지·식품을 제외한 개인소비지출 물가지수 전월비. 연준이 공식 목표(2%)로 삼는 지표.")
             try:
                 df = get_series("PCEPILFE", str(start_date), api_key)
@@ -1226,7 +1309,7 @@ if active_tab == "👷 고용":
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-            st.subheader("비농업 고용")
+            st.subheader("비농업 고용" + release_dday_badge("nfp_family"))
             st.caption("비농업 부문 신규 고용자 수(전월 대비 증감, 천 명). 경기 모멘텀의 대표 선행 신호.")
             try:
                 df = get_series("PAYEMS", str(start_date), api_key)
@@ -1246,7 +1329,7 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c2:
-            st.subheader("실업률")
+            st.subheader("실업률" + release_dday_badge("nfp_family"))
             st.caption("경제활동인구 중 실업자 비율. 연준 이중책무(물가·고용) 중 고용 측면 판단 근거.")
             try:
                 df = get_series("UNRATE", str(start_date), api_key)
@@ -1263,7 +1346,7 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c3:
-            st.subheader("평균시급 (YoY)")
+            st.subheader("평균시급 (YoY)" + release_dday_badge("nfp_family"))
             st.caption("시간당 평균 임금 전년 대비 상승률. 임금발 인플레이션 압력을 가늠하는 지표.")
             try:
                 df = get_series("CES0500000003", str(start_date), api_key)
@@ -1280,7 +1363,7 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c4:
-            st.subheader("신규실업수당 청구건수")
+            st.subheader("신규실업수당 청구건수" + release_dday_badge("jobless_claims"))
             st.caption("매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표.")
             try:
                 df = get_series("ICSA", str(start_date), api_key)
@@ -1340,7 +1423,7 @@ if active_tab == "🏭 경기":
 
     st.divider()
 
-    st.subheader("ISM 서비스 PMI")
+    st.subheader("ISM 서비스 PMI" + release_dday_badge("ism_pmi"))
     st.caption(
         "50을 기준으로 서비스업 경기 확장(>50)/위축(<50)을 판단. "
         "소비 중심인 미국 경제 특성상 주가 방향성에 영향이 큰 지표. "
@@ -1367,7 +1450,7 @@ if active_tab == "🏭 경기":
         st.info("위 표에 발표일(release_date)·기간(period)·수치(pmi)를 입력하면 추세 차트가 표시됩니다.")
 
 if active_tab == "🏦 연준":
-    st.subheader("FOMC (점도표 · 파월 기자회견)")
+    st.subheader("FOMC (점도표 · 파월 기자회견)" + fomc_dday_badge())
     st.caption(
         "연준 위원들의 향후 금리 전망 중간값(점도표)과 성명서·기자회견. "
         "점도표는 연 4회(3·6·9·12월) SEP 발표 시 공개되며, 시각 자료라 API가 없어 수동 입력이 필요합니다."
@@ -1434,12 +1517,16 @@ if active_tab == "💵 금리":
         else:
             st.caption("사이드바에 ECOS API Key를 입력하면 한국은행 기준금리도 함께 표시됩니다.")
 
-        c1, c2 = st.columns(2)
-        with c1:
-            latest = merged.iloc[-1]
-            prev = merged.iloc[-2]
-            latest_date = latest["date"].strftime("%Y-%m-%d")
-            for label, col in [("2년물", "2Y"), ("10년물", "10Y")]:
+        latest = merged.iloc[-1]
+        prev = merged.iloc[-2]
+        latest_date = latest["date"].strftime("%Y-%m-%d")
+
+        fed_valid = dff.dropna(subset=["Fed 정책금리(상단)"])
+        fed_latest_date = fed_valid["date"].iloc[-1].strftime("%Y-%m-%d") if len(fed_valid) else None
+
+        row1 = st.columns(3)
+        for (label, col), c in zip([("2년물", "2Y"), ("10년물", "10Y")], row1):
+            with c:
                 delta_abs = latest[col] - prev[col]
                 delta_pct = delta_abs / prev[col] * 100 if prev[col] else 0.0
                 st.metric(
@@ -1447,12 +1534,20 @@ if active_tab == "💵 금리":
                     f"{latest[col]:.2f}%",
                     delta=f"{delta_abs:+.3f}%p ({delta_pct:+.2f}%)",
                 )
-        with c2:
+        with row1[2]:
             spread = latest["10Y-2Y 스프레드"]
             st.metric("10Y-2Y 스프레드", f"{spread:+.2f}%p", delta="역전 중" if spread < 0 else "정상")
-            st.metric("Fed 정책금리(상단)", f"{latest['Fed 정책금리(상단)']:.2f}%")
-            if "한국은행 기준금리" in merged and pd.notna(latest["한국은행 기준금리"]):
-                st.metric("한국은행 기준금리", f"{latest['한국은행 기준금리']:.2f}%")
+
+        row2 = st.columns(3)
+        with row2[0]:
+            fed_label = f"Fed 정책금리(상단) ({fed_latest_date})" if fed_latest_date else "Fed 정책금리(상단)"
+            st.metric(fed_label, f"{latest['Fed 정책금리(상단)']:.2f}%")
+        if "한국은행 기준금리" in merged and pd.notna(latest["한국은행 기준금리"]):
+            with row2[1]:
+                bok_valid = kr_base.dropna(subset=["한국은행 기준금리"])
+                bok_latest_date = bok_valid["date"].iloc[-1].strftime("%Y-%m-%d") if len(bok_valid) else None
+                bok_label = f"한국은행 기준금리 ({bok_latest_date})" if bok_latest_date else "한국은행 기준금리"
+                st.metric(bok_label, f"{latest['한국은행 기준금리']:.2f}%")
 
         long_rates = merged.melt(
             id_vars="date", value_vars=rate_cols, var_name="구분", value_name="금리(%)"
@@ -1853,9 +1948,23 @@ if active_tab == "🔍 종목 검색·비교":
                 matches = [s for s in universe["stocks"] if q in s["name"].lower() or q in s["code"]]
                 matches.sort(key=lambda s: (not s["name"].lower().startswith(q), s["name"]))
                 matches = matches[:15]
-            options = {f"{s['name']} ({s['code']})": s for s in matches}
+
+            # multiselect의 options는 검색어가 바뀔 때마다 새로 계산되는데, 이전 검색으로
+            # 골라둔 종목이 새 options 목록에 없으면 streamlit이 session_state에서 그 선택을
+            # 조용히 지워버린다(검색어를 바꾸는 순간 이전 선택이 사라져 1개만 남는 원인).
+            # 검색으로 한 번이라도 등장했던 종목을 계속 누적해 options 풀로 유지해서 방지한다.
+            options_pool = st.session_state.setdefault("stock_compare_options_pool", {})
+            for s in matches:
+                options_pool[f"{s['name']} ({s['code']})"] = s
+            for label in st.session_state.get("stock_compare_select", []):
+                options_pool.setdefault(label, {"name": label, "code": ""})
+
+            match_labels = [f"{s['name']} ({s['code']})" for s in matches]
+            prev_selected = st.session_state.get("stock_compare_select", [])
+            option_labels = list(dict.fromkeys(match_labels + [l for l in prev_selected if l in options_pool]))
+
             selected_labels = st.multiselect(
-                "비교할 종목 선택 (최대 6개)", list(options.keys()), max_selections=6, key="stock_compare_select"
+                "비교할 종목 선택 (최대 6개)", option_labels, max_selections=6, key="stock_compare_select"
             )
             window_days = st.radio(
                 "비교 기간", [1, 3, 7, 30], horizontal=True, format_func=lambda d: f"최근 {d}일", key="stock_compare_days"
@@ -1868,7 +1977,7 @@ if active_tab == "🔍 종목 검색·비교":
             ):
                 from stockanalyzer.live import run_compare_and_save
 
-                picked = [options[label] for label in selected_labels]
+                picked = [options_pool[label] for label in selected_labels]
                 if not compare_job.start(run_compare_and_save, picked, window_days, compare_job.log):
                     st.warning("이미 다른 비교분석이 실행 중입니다. 잠시 후 다시 시도해주세요.")
             render_compare_job_status()
@@ -1877,50 +1986,127 @@ if active_tab == "🔍 종목 검색·비교":
             if compare_result and compare_result.get("results"):
                 st.caption(f"기준: 최근 {compare_result['days']}일 · {pd.to_datetime(compare_result['timestamp']).strftime('%Y-%m-%d %H:%M')}")
                 cdf = pd.DataFrame(compare_result["results"])
+
+                def _sentiment_label(row):
+                    majority = row["sentiment_majority"]
+                    if majority is None:
+                        return "—"
+                    if majority == "동률":
+                        return majority
+                    ratio = row["pos_ratio"] if majority == "긍정" else row["neg_ratio"]
+                    return f"{majority}({ratio:.1f}%)" if pd.notna(ratio) else majority
+
                 cdf_display = cdf.assign(
-                    일치=cdf["match"].map({True: "✅ 일치", False: "❌ 불일치", None: "—"})
+                    일치=cdf["match"].map({True: "✅ 일치", False: "❌ 불일치", None: "—"}),
+                    여론=cdf.apply(_sentiment_label, axis=1),
                 )[[
                     "name", "per", "pbr", "price_now", "price_change_pct",
-                    "pos_count", "neg_count", "sentiment_majority", "price_direction", "일치",
+                    "pos_count", "neg_count", "여론", "price_direction", "일치",
                 ]].rename(columns={
                     "name": "종목명", "per": "PER", "pbr": "PBR", "price_now": "현재가",
                     "price_change_pct": "기간등락률(%)", "pos_count": "긍정글", "neg_count": "부정글",
-                    "sentiment_majority": "여론", "price_direction": "실제방향",
+                    "price_direction": "실제방향",
                 })
                 st.dataframe(cdf_display, width="stretch", hide_index=True)
 
+                with st.expander("원문 게시글 보기 (긍정/부정 라벨)", expanded=False):
+                    for r in compare_result["results"]:
+                        posts_sample = r.get("posts_sample") or []
+                        st.markdown(f"**{r['name']}** · 전체 {r.get('total_posts', 0)}건 중 최근 {len(posts_sample)}건")
+                        if posts_sample:
+                            st.dataframe(
+                                pd.DataFrame(posts_sample).rename(
+                                    columns={"date": "날짜", "title": "제목", "label": "라벨"}
+                                ),
+                                width="stretch", hide_index=True, height=200,
+                            )
+                        else:
+                            st.caption("게시글이 없습니다.")
+
 if active_tab == "🏭 업종분석":
     st.subheader("업종분석")
-    st.caption("선택한 업종의 거래대금 상위 종목을 PER·PBR 가치평가 + 수급으로 그룹화합니다. 실시간 크롤링(최대 30종목)이라 다소 걸릴 수 있습니다.")
+    st.caption(
+        "선택한 업종의 종목을 ROE·EPS성장률·PER·PBR·부채비율(가치점수) + 외국인·기관 순매수 강도·"
+        "거래대금 팽창비율(수급점수)로 그룹화합니다. 실시간 크롤링이라 다소 걸릴 수 있습니다."
+    )
     with st.expander("펼치기", expanded=False):
         from stockanalyzer.crawler.sector import BROAD_SECTOR_GROUPS
 
         sector_name = st.selectbox("업종 선택", list(BROAD_SECTOR_GROUPS.keys()), key="sector_select")
+
+        filter_c1, filter_c2 = st.columns(2)
+        with filter_c1:
+            sort_basis = st.radio(
+                "정렬 기준", ["거래대금", "시가총액"], horizontal=True, key="sector_sort_basis",
+                help="시가총액 정렬은 '종목 검색·비교' 탭에서 전체 상장종목 목록을 먼저 만들어둬야 합니다.",
+            )
+        with filter_c2:
+            top_n = st.selectbox("상위 N종목", [5, 10, 20, 30], index=3, key="sector_top_n")
+
+        st.markdown("**종목추가** (자동 선정 상위 N 밖의 종목도 함께 비교하고 싶을 때)")
+        universe_for_extra = _load_stock_json("stock_universe.json")
+        if universe_for_extra is None:
+            st.caption("'종목 검색·비교' 탭에서 전체 상장종목 목록을 먼저 만들면 종목추가 검색을 쓸 수 있습니다.")
+            extra_picks = []
+        else:
+            extra_query = st.text_input("종목명 또는 코드 검색", key="sector_extra_query")
+            extra_matches = []
+            if extra_query:
+                eq = extra_query.strip().lower()
+                extra_matches = [
+                    s for s in universe_for_extra["stocks"]
+                    if eq in s["name"].lower() or eq in s["code"]
+                ][:15]
+                extra_matches.sort(key=lambda s: (not s["name"].lower().startswith(eq), s["name"]))
+
+            extra_pool = st.session_state.setdefault("sector_extra_options_pool", {})
+            for s in extra_matches:
+                extra_pool[f"{s['name']} ({s['code']})"] = s
+            for label in st.session_state.get("sector_extra_select", []):
+                extra_pool.setdefault(label, {"name": label, "code": ""})
+
+            extra_match_labels = [f"{s['name']} ({s['code']})" for s in extra_matches]
+            prev_extra = st.session_state.get("sector_extra_select", [])
+            extra_option_labels = list(dict.fromkeys(extra_match_labels + [l for l in prev_extra if l in extra_pool]))
+
+            extra_selected_labels = st.multiselect(
+                "추가할 종목 선택 (최대 5개)", extra_option_labels, max_selections=5, key="sector_extra_select",
+            )
+            extra_picks = [extra_pool[label] for label in extra_selected_labels]
 
         from stockanalyzer.jobs import sector_job
 
         if st.button("업종분석 시작", key="sector_run", disabled=sector_job.status()["status"] == "running"):
             from stockanalyzer.live import run_sector_and_save
 
-            if not sector_job.start(run_sector_and_save, sector_name, sector_job.log):
+            if not sector_job.start(run_sector_and_save, sector_name, sort_basis, top_n, extra_picks, sector_job.log):
                 st.warning("이미 다른 업종분석이 실행 중입니다. 잠시 후 다시 시도해주세요.")
         render_sector_job_status()
 
         sector_result = get_stock_sector_data()
         if sector_result and sector_result.get("recommendations"):
+            extra_note = f" + 수동추가 {sector_result['manual_extra_count']}종목" if sector_result.get("manual_extra_count") else ""
             st.caption(
                 f"'{sector_result['sector_name']}' 업종 {sector_result['total_in_sector']}종목 중 "
-                f"거래대금 상위 {sector_result['analyzed_count']}종목 분석 · "
+                f"{sector_result.get('sort_basis', '거래대금')} 상위 {sector_result['analyzed_count']}종목 분석{extra_note} · "
                 f"{pd.to_datetime(sector_result['timestamp']).strftime('%Y-%m-%d %H:%M')}"
             )
             sdf = pd.DataFrame(sector_result["recommendations"]).sort_values("total_score", ascending=False)
             sdf_display = sdf.assign(
-                그룹=sdf["group"].map(lambda g: f"{STOCK_GROUP_EMOJI.get(g, '')} {g}")
-            )[["name", "per", "pbr", "value_score", "supply_score", "total_score", "그룹"]].rename(columns={
-                "name": "종목명", "per": "PER", "pbr": "PBR",
-                "value_score": "가치점수", "supply_score": "수급점수", "total_score": "종합점수",
+                그룹=sdf["group"].map(lambda g: f"{STOCK_GROUP_EMOJI.get(g, '')} {g}"),
+                종목명=sdf.apply(lambda r: f"➕ {r['name']}" if r.get("manually_added") else r["name"], axis=1),
+            )[[
+                "종목명", "per", "pbr", "roe", "eps_growth", "debt_ratio", "value_score",
+                "foreign_strength", "inst_strength", "turnover_expansion", "supply_score",
+                "total_score", "그룹",
+            ]].rename(columns={
+                "per": "PER", "pbr": "PBR", "roe": "ROE(%)", "eps_growth": "EPS성장률(%)",
+                "debt_ratio": "부채비율(%)", "value_score": "가치점수",
+                "foreign_strength": "외국인순매수강도", "inst_strength": "기관순매수강도",
+                "turnover_expansion": "거래대금증가율", "supply_score": "수급점수", "total_score": "종합점수",
             })
             st.dataframe(sdf_display, width="stretch", hide_index=True)
+            st.caption("➕ 표시는 상위 N 밖에서 수동으로 추가한 종목입니다. EV/EBITDA·FCF·연기금 순매수는 네이버 금융에서 안정적으로 크롤링할 수 없어 가치점수/수급점수 산식에서 제외하고 나머지 지표 가중치를 재조정했습니다.")
 
 # ── 노트 아카이브 ────────────────────────────────────────────
 @st.dialog("노트", width="large")

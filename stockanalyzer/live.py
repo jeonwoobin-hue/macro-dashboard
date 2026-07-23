@@ -152,11 +152,12 @@ def run_compare_and_save(stocks: list, days: int, log) -> None:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
 
-def run_sector_and_save(sector_name: str, log) -> None:
-    """sector_job.start(run_sector_and_save, sector_name, sector_job.log)로 호출된다."""
+def run_sector_and_save(sector_name: str, sort_basis: str, top_n: int, extra_stocks: list, log) -> None:
+    """sector_job.start(run_sector_and_save, sector_name, sort_basis, top_n, extra_stocks,
+    sector_job.log)로 호출된다."""
     from stockanalyzer.analysis.sector_recommend import analyze_sector
 
-    result = analyze_sector(sector_name, log=log)
+    result = analyze_sector(sector_name, sort_basis=sort_basis, top_n=top_n, extra_stocks=extra_stocks, log=log)
     result["timestamp"] = datetime.now().isoformat(timespec="seconds")
     path = os.path.join(DATA_DIR, "latest_sector.json")
     with open(path, "w", encoding="utf-8") as f:

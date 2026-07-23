@@ -40,20 +40,33 @@ def fetch_top_market_cap(n: int = 10, sosok: int = 0):
 
 
 def fetch_all_listed_stocks(log=None):
-    """코스피(sosok=0) + 코스닥(sosok=1) 전 종목을 [{code, name, market}] 형태로 반환한다.
-    검색 캐시(stock_universe)를 만들 때 한 번만 호출하는 무거운 크롤링이다."""
+    """코스피(sosok=0) + 코스닥(sosok=1) 전 종목을 [{code, name, market, market_cap}] 형태로 반환한다.
+    검색 캐시(stock_universe)를 만들 때 한 번만 호출하는 무거운 크롤링이다.
+    market_cap(억원)은 이 목록 페이지 자체가 시가총액순 정렬이라 추가 요청 없이 같이 담아두면,
+    업종분석에서 '시가총액 기준 정렬'을 할 때 종목별로 다시 크롤링하지 않고 재사용할 수 있다."""
     all_stocks = []
     for sosok, market in ((0, "KOSPI"), (1, "KOSDAQ")):
         page = 1
         while True:
             soup = get_soup(MARKET_CAP_URL.format(sosok=sosok, page=page))
             table = soup.select_one("table.type_2")
-            links = table.select("a.tltle") if table else []
-            if not links:
-                break
-            for link in links:
+            rows = table.select("tr") if table else []
+            found_row = False
+            for row in rows:
+                link = row.select_one("a.tltle")
+                if not link:
+                    continue
+                found_row = True
+                tds = row.select("td")
                 code = link["href"].split("code=")[-1]
-                all_stocks.append({"code": code, "name": link.text.strip(), "market": market})
+                all_stocks.append({
+                    "code": code,
+                    "name": link.text.strip(),
+                    "market": market,
+                    "market_cap": parse_number(tds[6].text) if len(tds) > 6 else None,
+                })
+            if not found_row:
+                break
             if log:
                 log(f"{market} {page}페이지 수집 완료 (누적 {len(all_stocks)}종목)")
             # 마지막 페이지 판별: 다음 페이지 링크가 없으면 종료

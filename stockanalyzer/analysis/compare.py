@@ -99,6 +99,12 @@ def analyze_stock_window(code: str, name: str, days: int = 1) -> dict:
         "price_direction": judgement["price_direction"],
         "match": judgement["match"],
         **naver_tally,
+        # 원문 데이터 노출용 표본(최신순 최대 50건). 전체 게시글을 다 저장하면
+        # 인기 종목은 JSON이 지나치게 커져서 미리보기 용도로만 개수를 제한한다.
+        "posts_sample": [
+            {"date": p["date"], "title": p["title"], "label": p["sentiment_label"]}
+            for p in naver_posts[:50]
+        ],
         # 뉴스(네이버 증권 뉴스 API) 집계는 news_ 접두어로 별도 제공. "여론-실제 일치" 판정에는
         # 쓰지 않고, 커뮤니티 여론과 나란히 비교해 보여주는 용도로만 사용한다.
         "news_covered_full_window": news_covered_full_window,
