@@ -701,10 +701,10 @@ if st.session_state["main_section"] == "홈":
                 hero_search_clicked = st.button("분석하기", type="primary", width="stretch", key="hero_stock_search")
 
         if hero_search_clicked and hero_stock_query:
-            # 여론·주가 분석 탭(종목 검색·비교)은 시가총액 상위 10개로 제한된 종목
-            # 심리분석과 달리 전체 상장종목을 검색할 수 있어, 홈에서 검색한 종목명을
-            # 그대로 이 탭의 '비교할 종목 선택'에 미리 채워 넣어 다시 입력할 필요가
-            # 없게 한다.
+            # 종목분석 탭의 '종목추가'는 전체 상장종목을 검색할 수 있어, 홈에서 검색한
+            # 종목명을 그대로 그 탭의 '추가할 종목 선택'에 미리 채워 넣어 다시 입력할
+            # 필요가 없게 한다(업종 선택과 무관하게 수동추가 종목은 항상 분석 대상에
+            # 포함되므로, 어떤 업종이 선택돼 있어도 상관없다).
             hero_universe = _load_stock_json("stock_universe.json")
             hero_match = None
             if hero_universe:
@@ -715,18 +715,16 @@ if st.session_state["main_section"] == "홈":
                         break
             if hero_match:
                 hero_label = f"{hero_match['name']} ({hero_match['code']})"
-                pool = st.session_state.setdefault("stock_compare_options_pool", {})
+                pool = st.session_state.setdefault("sector_extra_options_pool", {})
                 pool[hero_label] = hero_match
-                st.session_state["stock_compare_select"] = [hero_label]
+                st.session_state["sector_extra_select"] = [hero_label]
 
-                st.session_state["main_section"] = "인간지표"
-                st.session_state["human_sub"] = "🔍 여론·주가 분석"
+                st.session_state["main_section"] = "종목분석"
                 # 네비게이션 위젯(segmented_control)들은 이미 이번 실행 앞부분에서 렌더링된
                 # 뒤라 그 session_state를 지금 pop/대입하려 하면 조용히 무시되거나
                 # StreamlitAPIException이 난다. 대신 위젯 key에 들어가는 generation 번호를
                 # 올려서 다음 rerun에 "새 위젯"으로 취급되게 하면 default가 확실히 먹힌다.
                 st.session_state["nav_generation"] += 1
-                st.session_state["human_sub_generation"] = st.session_state.get("human_sub_generation", 0) + 1
                 st.rerun()
             elif hero_universe is None:
                 st.info(
@@ -2418,6 +2416,14 @@ if active_tab == "🏭 업종분석":
             st.markdown("**수급점수 · 종합점수 · 그룹**")
             st.dataframe(supply_display, width="stretch", hide_index=True)
             st.caption("➕ 표시는 상위 N 밖에서 수동으로 추가한 종목입니다. EV/EBITDA·FCF·연기금 순매수는 네이버 금융에서 안정적으로 크롤링할 수 없어 가치점수/수급점수 산식에서 제외하고 나머지 지표 가중치를 재조정했습니다.")
+
+    st.divider()
+    if st.button("인간지표 : 여론·주가 분석하러 가기", key="sector_goto_sentiment"):
+        st.session_state["main_section"] = "인간지표"
+        st.session_state["human_sub"] = "🔍 여론·주가 분석"
+        st.session_state["nav_generation"] += 1
+        st.session_state["human_sub_generation"] = st.session_state.get("human_sub_generation", 0) + 1
+        st.rerun()
 
 # ── 노트 아카이브 ────────────────────────────────────────────
 @st.dialog("노트", width="large")
