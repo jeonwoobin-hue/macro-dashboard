@@ -408,6 +408,13 @@ MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH, False]
 
 if "main_section" not in st.session_state:
     st.session_state["main_section"] = "홈"
+# 로고 클릭/홈 검색처럼 위젯 밖에서 main_section을 바꿀 때, segmented_control의 session_state
+# 값을 그 자리에서 지우거나 대입하려고 하면(pop/assign 둘 다) 이미 이번 실행 앞부분에서 그
+# 위젯이 렌더링된 뒤라 조용히 무시되거나(pop) StreamlitAPIException이 난다(assign). 위젯의
+# key 자체에 세대(generation) 번호를 넣어두고, 외부에서 강제로 이동시킬 때는 그 번호만
+# 올려서 다음 rerun에 "새 위젯"으로 취급되게 한다 — 그러면 default가 확실히 먹힌다.
+if "nav_generation" not in st.session_state:
+    st.session_state["nav_generation"] = 0
 
 
 @st.cache_data
@@ -442,7 +449,8 @@ with st.container(key="dobio_header"):
                 )
                 if st.button("dobio", key="dobio_home_btn"):
                     st.session_state["main_section"] = "홈"
-                    st.session_state.pop("main_nav_widget", None)
+                    st.session_state["nav_generation"] += 1
+                    st.rerun()
     with nav_col:
         with st.container(key="mainnav_wrap"):
             st.markdown(
@@ -451,13 +459,16 @@ with st.container(key="dobio_header"):
             )
             # key 없이 default만 매 rerun마다 session_state에서 다시 계산해 넘기면, 그 default 값이
             # 바뀔 때마다 위젯의 내부 식별자도 같이 바뀐 것처럼 취급돼 클릭이 한 번에 반영 안 되고
-            # 두 번 눌러야 하는 문제가 있었다. key를 고정해 위젯 자체가 상태를 갖게 하고, 로고 클릭처럼
-            # 위젯 밖에서 main_section을 바꾸는 경우엔 이 키를 지워서 다음 렌더에 default를 다시 읽게 한다.
+            # 두 번 눌러야 하는 문제가 있었다. 그렇다고 key를 완전히 고정해버리면, 로고 클릭처럼
+            # 위젯 밖에서 main_section을 바꾸는 경우 이미 이번 실행에서 그 위젯이 렌더링된 뒤라
+            # session_state를 다시 못 건드린다(StreamlitAPIException, 또는 조용히 무시됨). key에
+            # nav_generation을 넣어서, 정상 클릭 때는 같은 key로 유지(2번 클릭 문제 없음)하고
+            # 외부에서 강제 이동시킬 때만 generation을 올려 "새 위젯"으로 취급되게 한다.
             _main_sel = st.segmented_control(
                 "메인 메뉴", MAIN_SECTIONS,
                 default=st.session_state["main_section"] if st.session_state["main_section"] in MAIN_SECTIONS else None,
                 label_visibility="collapsed",
-                key="main_nav_widget",
+                key=f"main_nav_widget_{st.session_state['nav_generation']}",
             )
         if _main_sel:
             st.session_state["main_section"] = _main_sel
@@ -681,12 +692,13 @@ if st.session_state["main_section"] == "홈":
 
                 st.session_state["main_section"] = "인간지표"
                 st.session_state["human_sub"] = "🔍 여론·주가 분석"
-                # 네비게이션 위젯 밖에서 상태를 바꾸는 것이므로, 위젯 자체의 키도 지워서
-                # 다음 렌더에 이 새 값을 default로 다시 읽게 한다(안 지우면 위젯이 이전
-                # 선택을 그대로 들고 있어 한 번 더 클릭해야 반영되는 문제가 생긴다).
-                st.session_state.pop("main_nav_widget", None)
-                st.session_state.pop("human_sub_widget", None)
-                st.success(f"'{hero_match['name']}'을(를) 선택해뒀습니다 — 상단 '인간지표 > 여론·주가 분석'에서 바로 비교분석을 시작하세요.")
+                # 네비게이션 위젯(segmented_control)들은 이미 이번 실행 앞부분에서 렌더링된
+                # 뒤라 그 session_state를 지금 pop/대입하려 하면 조용히 무시되거나
+                # StreamlitAPIException이 난다. 대신 위젯 key에 들어가는 generation 번호를
+                # 올려서 다음 rerun에 "새 위젯"으로 취급되게 하면 default가 확실히 먹힌다.
+                st.session_state["nav_generation"] += 1
+                st.session_state["human_sub_generation"] = st.session_state.get("human_sub_generation", 0) + 1
+                st.rerun()
             elif hero_universe is None:
                 st.info(
                     "종목 검색용 전체 상장목록이 아직 없습니다. '인간지표 > 여론·주가 분석' 메뉴에서 "
@@ -917,6 +929,9 @@ def _sub_nav(label: str, session_key: str, options: list[str], seen_keys: dict[s
     seen_keys = seen_keys or {}
     if session_key not in st.session_state:
         st.session_state[session_key] = options[0]
+    gen_key = f"{session_key}_generation"
+    if gen_key not in st.session_state:
+        st.session_state[gen_key] = 0
     if st.session_state[session_key] in seen_keys:
         _mark_seen(seen_keys[st.session_state[session_key]])
     wrap_key = f"{session_key}_wrap"
@@ -926,10 +941,12 @@ def _sub_nav(label: str, session_key: str, options: list[str], seen_keys: dict[s
             if opt in seen_keys and _unseen_fresh(seen_keys[opt])
         ]
         st.markdown(_badge_css(wrap_key, positions), unsafe_allow_html=True)
-        # 메인 네비게이션과 같은 이유로 key를 고정해 첫 클릭에 바로 반영되게 한다.
+        # 메인 네비게이션과 같은 이유로 key를 고정해 첫 클릭에 바로 반영되게 한다. 홈 화면
+        # 검색처럼 위젯 밖에서 이 값을 바꾸는 경우엔 generation을 올려 새 위젯으로 취급한다
+        # (자세한 이유는 main_nav_widget 쪽 주석 참고).
         selected = st.segmented_control(
             label, options, default=st.session_state[session_key], label_visibility="collapsed",
-            key=f"{session_key}_widget",
+            key=f"{session_key}_widget_{st.session_state[gen_key]}",
         )
     if selected:
         st.session_state[session_key] = selected
