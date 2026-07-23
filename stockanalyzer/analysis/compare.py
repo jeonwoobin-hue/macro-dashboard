@@ -45,8 +45,15 @@ def daily_price_changes(price_rows: list, since_date: str) -> list:
 def build_daily_table(daily_sentiment: dict, price_changes: list, lag_days: int = 0) -> list:
     """일자별 여론(daily_sentiment) + 일자별 등락률(price_changes)을 합쳐 날짜순 상세 행을 만든다.
     lag_days=0이면 '당일 여론 vs 당일 등락', lag_days=1이면 '당일 여론 vs 다음 거래일 등락'으로
-    비교한다(다음 거래일은 실제 거래일 목록 기준이라 주말/공휴일을 자동으로 건너뛴다)."""
+    비교한다(다음 거래일은 실제 거래일 목록 기준이라 주말/공휴일을 자동으로 건너뛴다).
+
+    daily_sentiment는 종목토론실 게시글 날짜를 그대로 모은 것이라 주말·공휴일에 올라온 글도
+    그 날짜로 잡힌다(장이 안 열려도 게시판은 항상 열려 있으므로). 그런 비거래일을 그대로 두면
+    일별 트렌드 차트에 등락률 없는 날이 섞여 흐름이 끊겨 보이므로, price_changes에 실제로
+    존재하는 거래일만 남기고 나머지는 건너뛴다(전체 기간 집계·긍정/부정 카운트에는 영향 없음 —
+    거기서는 게시글을 전부 센다)."""
     trading_dates = sorted({c["date"] for c in price_changes})
+    trading_date_set = set(trading_dates)
     price_by_date = {c["date"]: c["price_change_pct"] for c in price_changes}
 
     buzz_totals = [b["total"] for b in daily_sentiment.values() if b["total"]]
@@ -54,6 +61,8 @@ def build_daily_table(daily_sentiment: dict, price_changes: list, lag_days: int 
 
     rows = []
     for date in sorted(daily_sentiment.keys()):
+        if date not in trading_date_set:
+            continue
         bucket = daily_sentiment[date]
         pos, neg, total = bucket["pos"], bucket["neg"], bucket["total"]
         majority = None
