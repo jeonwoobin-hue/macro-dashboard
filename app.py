@@ -342,7 +342,7 @@ def _badge_css(container_key: str, fresh_positions: list[int]) -> str:
 HUMAN_FRESH = _unseen_fresh("human_keyword") or _unseen_fresh("human_stock")
 NOTES_FRESH = _unseen_fresh("multi_notes")
 
-MAIN_SECTIONS = ["종목분석 ↗", "경제지표", "인간지표", "멀티차트", "동전점지"]
+MAIN_SECTIONS = ["종목분석", "경제지표", "인간지표", "멀티차트", "동전점지"]
 MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH, False]
 
 if "main_section" not in st.session_state:
@@ -807,8 +807,7 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
 # 매 rerun마다 안의 코드를 전부 실행해서 API 호출이 한 번에 몰리는 문제가 있었기 때문에,
 # 선택된 하나의 active_tab 값만 계산해 아래 코드가 실제로 선택된 것만 실행하게 유지한다.
 ECON_SUB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기", "💵 금리", "🏦 연준", "🫧 버블", "📰 뉴스"]
-STOCK_SUB_LABELS = ["🔍 종목 검색·비교", "🏭 업종분석"]
-HUMAN_SUB_LABELS = ["🔑 국내주식 키워드", "😨 공포지수", "🗣️ 종목 심리분석"]
+HUMAN_SUB_LABELS = ["🔑 국내주식 키워드", "😨 공포지수", "🔍 종목 검색·비교", "🗣️ 종목 심리분석"]
 HUMAN_SEEN_KEYS = {"🔑 국내주식 키워드": "human_keyword", "🗣️ 종목 심리분석": "human_stock"}
 
 
@@ -846,8 +845,8 @@ elif main_section == "동전점지":
     active_tab = "동전점지"
 elif main_section == "인간지표":
     active_tab = _sub_nav("인간지표 메뉴", "human_sub", HUMAN_SUB_LABELS, HUMAN_SEEN_KEYS)
-elif main_section == "종목분석 ↗":
-    active_tab = _sub_nav("종목분석 메뉴", "stock_sub", STOCK_SUB_LABELS)
+elif main_section == "종목분석":
+    active_tab = "🏭 업종분석"
 else:  # 경제지표
     active_tab = _sub_nav("경제지표 메뉴", "econ_sub", ECON_SUB_LABELS)
 
@@ -2092,20 +2091,28 @@ if active_tab == "🏭 업종분석":
                 f"{pd.to_datetime(sector_result['timestamp']).strftime('%Y-%m-%d %H:%M')}"
             )
             sdf = pd.DataFrame(sector_result["recommendations"]).sort_values("total_score", ascending=False)
-            sdf_display = sdf.assign(
+            sdf = sdf.assign(
                 그룹=sdf["group"].map(lambda g: f"{STOCK_GROUP_EMOJI.get(g, '')} {g}"),
                 종목명=sdf.apply(lambda r: f"➕ {r['name']}" if r.get("manually_added") else r["name"], axis=1),
-            )[[
-                "종목명", "per", "pbr", "roe", "eps_growth", "debt_ratio", "value_score",
-                "foreign_strength", "inst_strength", "turnover_expansion", "supply_score",
-                "total_score", "그룹",
-            ]].rename(columns={
+            )
+            # 컬럼이 13개라 한 표에 다 넣으면 그룹 컬럼이 잘려 보여서, 가치점수 관련/수급점수 관련
+            # 두 표로 나눠 각자 폭에 여유를 준다(종목명은 두 표 모두에 넣어 대조가 되게 유지).
+            value_display = sdf[
+                ["종목명", "per", "pbr", "roe", "eps_growth", "debt_ratio", "value_score"]
+            ].rename(columns={
                 "per": "PER", "pbr": "PBR", "roe": "ROE(%)", "eps_growth": "EPS성장률(%)",
                 "debt_ratio": "부채비율(%)", "value_score": "가치점수",
+            })
+            supply_display = sdf[
+                ["종목명", "foreign_strength", "inst_strength", "turnover_expansion", "supply_score", "total_score", "그룹"]
+            ].rename(columns={
                 "foreign_strength": "외국인순매수강도", "inst_strength": "기관순매수강도",
                 "turnover_expansion": "거래대금증가율", "supply_score": "수급점수", "total_score": "종합점수",
             })
-            st.dataframe(sdf_display, width="stretch", hide_index=True)
+            st.markdown("**가치점수**")
+            st.dataframe(value_display, width="stretch", hide_index=True)
+            st.markdown("**수급점수 · 종합점수 · 그룹**")
+            st.dataframe(supply_display, width="stretch", hide_index=True)
             st.caption("➕ 표시는 상위 N 밖에서 수동으로 추가한 종목입니다. EV/EBITDA·FCF·연기금 순매수는 네이버 금융에서 안정적으로 크롤링할 수 없어 가치점수/수급점수 산식에서 제외하고 나머지 지표 가중치를 재조정했습니다.")
 
 # ── 노트 아카이브 ────────────────────────────────────────────
