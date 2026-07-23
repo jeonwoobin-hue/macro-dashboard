@@ -2104,10 +2104,14 @@ if active_tab == "🔍 종목 검색·비교":
                         daily_df["date_label"] = daily_df["date"].map(lambda d: f"{int(d[5:7])}.{int(d[8:10])}")
                         date_order = list(daily_df["date_label"])
 
+                        # 좌/우 y축에 회전된 제목("여론지수"/"등락률(%)")을 같이 넣으면, 차트 폭이
+                        # 좁을 때(모바일, expander 안 등) 제목 글자가 눈금 숫자와 겹쳐 보이는 문제가
+                        # 있었다(titlePadding을 늘려도 근본적으로 해결이 안 됨). 축 제목은 아예 없애고
+                        # 캡션 한 줄로 범례를 설명하는 쪽이 좁은 폭에서도 항상 안전하다.
                         x_enc = alt.X("date_label:O", title="날짜", sort=date_order, axis=alt.Axis(labelAngle=0))
                         bar = alt.Chart(daily_df).mark_bar().encode(
                             x=x_enc,
-                            y=alt.Y("net_sentiment:Q", title="여론지수", axis=alt.Axis(titlePadding=8)),
+                            y=alt.Y("net_sentiment:Q", title=None),
                             color=alt.condition(alt.datum.net_sentiment >= 0, alt.value("#2e7d32"), alt.value("#c62828")),
                             tooltip=[
                                 alt.Tooltip("date:N", title="날짜"), alt.Tooltip("pos_count:Q", title="긍정글"),
@@ -2116,12 +2120,13 @@ if active_tab == "🔍 종목 검색·비교":
                         )
                         line = alt.Chart(daily_df).mark_line(point=True, color="#4C78A8").encode(
                             x=x_enc,
-                            y=alt.Y("price_change_pct:Q", title="등락률(%)", axis=alt.Axis(titlePadding=8)),
+                            y=alt.Y("price_change_pct:Q", title=None),
                             tooltip=[alt.Tooltip("date:N", title="날짜"), alt.Tooltip("price_change_pct:Q", title="등락률(%)", format="+.2f")],
                         )
                         markers = alt.Chart(daily_df).mark_text(fontSize=14).encode(
-                            x=x_enc, y=alt.Y("marker_y:Q"), text="match_icon:N",
+                            x=x_enc, y=alt.Y("marker_y:Q", axis=None), text="match_icon:N",
                         )
+                        st.caption("🟩🟥 막대(왼쪽 축) = 일별 여론지수(긍정글-부정글) · 🔵 선(오른쪽 축) = 일별 등락률(%)")
                         st.altair_chart(
                             alt.layer(bar, markers, line).resolve_scale(y="independent").properties(height=280),
                             width="stretch",
