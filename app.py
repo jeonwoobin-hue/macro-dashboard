@@ -391,16 +391,22 @@ with st.container(key="dobio_header"):
                 )
                 if st.button("dobio", key="dobio_home_btn"):
                     st.session_state["main_section"] = "홈"
+                    st.session_state.pop("main_nav_widget", None)
     with nav_col:
         with st.container(key="mainnav_wrap"):
             st.markdown(
                 _badge_css("mainnav_wrap", [i + 1 for i, f in enumerate(MAIN_FRESH_FLAGS) if f]),
                 unsafe_allow_html=True,
             )
+            # key 없이 default만 매 rerun마다 session_state에서 다시 계산해 넘기면, 그 default 값이
+            # 바뀔 때마다 위젯의 내부 식별자도 같이 바뀐 것처럼 취급돼 클릭이 한 번에 반영 안 되고
+            # 두 번 눌러야 하는 문제가 있었다. key를 고정해 위젯 자체가 상태를 갖게 하고, 로고 클릭처럼
+            # 위젯 밖에서 main_section을 바꾸는 경우엔 이 키를 지워서 다음 렌더에 default를 다시 읽게 한다.
             _main_sel = st.segmented_control(
                 "메인 메뉴", MAIN_SECTIONS,
                 default=st.session_state["main_section"] if st.session_state["main_section"] in MAIN_SECTIONS else None,
                 label_visibility="collapsed",
+                key="main_nav_widget",
             )
         if _main_sel:
             st.session_state["main_section"] = _main_sel
@@ -631,6 +637,11 @@ if st.session_state["main_section"] == "홈":
             if hero_match:
                 st.session_state["main_section"] = "인간지표"
                 st.session_state["human_sub"] = "🗣️ 종목 심리분석"
+                # 네비게이션 위젯 밖에서 상태를 바꾸는 것이므로, 위젯 자체의 키도 지워서
+                # 다음 렌더에 이 새 값을 default로 다시 읽게 한다(안 지우면 위젯이 이전
+                # 선택을 그대로 들고 있어 한 번 더 클릭해야 반영되는 문제가 생긴다).
+                st.session_state.pop("main_nav_widget", None)
+                st.session_state.pop("human_sub_widget", None)
                 st.success(f"'{hero_match['name']}' 분석 결과가 있습니다 — 상단 '인간지표' 메뉴에서 확인하세요.")
             else:
                 st.info(
@@ -845,8 +856,10 @@ def _sub_nav(label: str, session_key: str, options: list[str], seen_keys: dict[s
             if opt in seen_keys and _unseen_fresh(seen_keys[opt])
         ]
         st.markdown(_badge_css(wrap_key, positions), unsafe_allow_html=True)
+        # 메인 네비게이션과 같은 이유로 key를 고정해 첫 클릭에 바로 반영되게 한다.
         selected = st.segmented_control(
-            label, options, default=st.session_state[session_key], label_visibility="collapsed"
+            label, options, default=st.session_state[session_key], label_visibility="collapsed",
+            key=f"{session_key}_widget",
         )
     if selected:
         st.session_state[session_key] = selected
