@@ -826,7 +826,7 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
 # 매 rerun마다 안의 코드를 전부 실행해서 API 호출이 한 번에 몰리는 문제가 있었기 때문에,
 # 선택된 하나의 active_tab 값만 계산해 아래 코드가 실제로 선택된 것만 실행하게 유지한다.
 ECON_SUB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기", "💵 금리", "🏦 연준", "🫧 버블", "📰 뉴스"]
-HUMAN_SUB_LABELS = ["🔑 국내주식 키워드", "😨 공포지수", "🔍 여론·주가 분석", "🗣️ 종목 심리분석"]
+HUMAN_SUB_LABELS = ["🔍 여론·주가 분석", "🔑 국내주식 키워드", "😨 공포지수", "🗣️ 종목 심리분석"]
 HUMAN_SEEN_KEYS = {"🔑 국내주식 키워드": "human_keyword", "🗣️ 종목 심리분석": "human_stock"}
 
 
