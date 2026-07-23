@@ -826,7 +826,7 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
 # 매 rerun마다 안의 코드를 전부 실행해서 API 호출이 한 번에 몰리는 문제가 있었기 때문에,
 # 선택된 하나의 active_tab 값만 계산해 아래 코드가 실제로 선택된 것만 실행하게 유지한다.
 ECON_SUB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기", "💵 금리", "🏦 연준", "🫧 버블", "📰 뉴스"]
-HUMAN_SUB_LABELS = ["🔑 국내주식 키워드", "😨 공포지수", "🔍 종목 검색·비교", "🗣️ 종목 심리분석"]
+HUMAN_SUB_LABELS = ["🔑 국내주식 키워드", "😨 공포지수", "🔍 여론·주가 분석", "🗣️ 종목 심리분석"]
 HUMAN_SEEN_KEYS = {"🔑 국내주식 키워드": "human_keyword", "🗣️ 종목 심리분석": "human_stock"}
 
 
@@ -1951,10 +1951,10 @@ if active_tab == "🗣️ 종목 심리분석":
             else:
                 st.caption("관측일수가 부족해(종목당 3일 미만) 계산된 상관계수가 아직 없습니다. 데이터가 쌓일수록 채워집니다.")
 
-if active_tab == "🔍 종목 검색·비교":
-    st.subheader("종목 검색·비교")
+if active_tab == "🔍 여론·주가 분석":
+    st.subheader("여론·주가 분석")
     st.caption("원하는 종목을 최대 6개 골라 기간 전체 여론(긍정/부정) 우세 방향과 실제 등락 방향이 맞았는지 비교합니다. 실시간 크롤링이라 종목·기간에 따라 시간이 걸릴 수 있습니다.")
-    with st.expander("펼치기", expanded=False):
+    with st.expander("펼치기", expanded=True):
         universe = _load_stock_json("stock_universe.json")
         if universe is None:
             from stockanalyzer.jobs import universe_job
@@ -2176,7 +2176,7 @@ if active_tab == "🏭 업종분석":
         with filter_c1:
             sort_basis = st.radio(
                 "정렬 기준", ["거래대금", "시가총액"], horizontal=True, key="sector_sort_basis",
-                help="시가총액 정렬은 '종목 검색·비교' 탭에서 전체 상장종목 목록을 먼저 만들어둬야 합니다.",
+                help="시가총액 정렬은 '여론·주가 분석' 탭에서 전체 상장종목 목록을 먼저 만들어둬야 합니다.",
             )
         with filter_c2:
             top_n = st.selectbox("상위 N종목", [5, 10, 20, 30], index=3, key="sector_top_n")
@@ -2184,7 +2184,7 @@ if active_tab == "🏭 업종분석":
         st.markdown("**종목추가** (자동 선정 상위 N 밖의 종목도 함께 비교하고 싶을 때)")
         universe_for_extra = _load_stock_json("stock_universe.json")
         if universe_for_extra is None:
-            st.caption("'종목 검색·비교' 탭에서 전체 상장종목 목록을 먼저 만들면 종목추가 검색을 쓸 수 있습니다.")
+            st.caption("'여론·주가 분석' 탭에서 전체 상장종목 목록을 먼저 만들면 종목추가 검색을 쓸 수 있습니다.")
             extra_picks = []
         else:
             extra_query = st.text_input("종목명 또는 코드 검색", key="sector_extra_query")
