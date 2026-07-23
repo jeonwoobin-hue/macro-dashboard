@@ -661,27 +661,39 @@ if st.session_state["main_section"] == "홈":
                 hero_search_clicked = st.button("분석하기", type="primary", width="stretch", key="hero_stock_search")
 
         if hero_search_clicked and hero_stock_query:
-            hero_stock_data = get_stock_sentiment_data()
+            # 여론·주가 분석 탭(종목 검색·비교)은 시가총액 상위 10개로 제한된 종목
+            # 심리분석과 달리 전체 상장종목을 검색할 수 있어, 홈에서 검색한 종목명을
+            # 그대로 이 탭의 '비교할 종목 선택'에 미리 채워 넣어 다시 입력할 필요가
+            # 없게 한다.
+            hero_universe = _load_stock_json("stock_universe.json")
             hero_match = None
-            if hero_stock_data:
-                for rec in hero_stock_data.get("recommendations", []):
-                    if hero_stock_query.strip() in rec.get("name", ""):
-                        hero_match = rec
+            if hero_universe:
+                hq = hero_stock_query.strip().lower()
+                for s in hero_universe.get("stocks", []):
+                    if hq in s["name"].lower() or hq in s["code"]:
+                        hero_match = s
                         break
             if hero_match:
+                hero_label = f"{hero_match['name']} ({hero_match['code']})"
+                pool = st.session_state.setdefault("stock_compare_options_pool", {})
+                pool[hero_label] = hero_match
+                st.session_state["stock_compare_select"] = [hero_label]
+
                 st.session_state["main_section"] = "인간지표"
-                st.session_state["human_sub"] = "🗣️ 종목 심리분석"
+                st.session_state["human_sub"] = "🔍 여론·주가 분석"
                 # 네비게이션 위젯 밖에서 상태를 바꾸는 것이므로, 위젯 자체의 키도 지워서
                 # 다음 렌더에 이 새 값을 default로 다시 읽게 한다(안 지우면 위젯이 이전
                 # 선택을 그대로 들고 있어 한 번 더 클릭해야 반영되는 문제가 생긴다).
                 st.session_state.pop("main_nav_widget", None)
                 st.session_state.pop("human_sub_widget", None)
-                st.success(f"'{hero_match['name']}' 분석 결과가 있습니다 — 상단 '인간지표' 메뉴에서 확인하세요.")
-            else:
+                st.success(f"'{hero_match['name']}'을(를) 선택해뒀습니다 — 상단 '인간지표 > 여론·주가 분석'에서 바로 비교분석을 시작하세요.")
+            elif hero_universe is None:
                 st.info(
-                    f"'{hero_stock_query}'는 아직 시가총액 상위 분석 대상에 없습니다. "
-                    "'인간지표' 메뉴의 종목 심리분석에서 현재 분석 가능한 상위 종목 목록을 확인해보세요."
+                    "종목 검색용 전체 상장목록이 아직 없습니다. '인간지표 > 여론·주가 분석' 메뉴에서 "
+                    "'전체 상장종목 목록 만들기'를 먼저 실행해주세요."
                 )
+            else:
+                st.info(f"'{hero_stock_query}'와 일치하는 종목을 찾지 못했습니다. 종목명이나 코드를 다시 확인해주세요.")
 
     with st.container(key="dobio_sentiment_card"):
         st.markdown('<div class="dobio-sentiment-label">오늘의 투자심리</div>', unsafe_allow_html=True)
