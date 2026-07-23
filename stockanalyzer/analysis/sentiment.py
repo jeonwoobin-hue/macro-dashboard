@@ -107,6 +107,34 @@ def score_posts(posts: list) -> list:
     return posts
 
 
+# 명사 키워드 추출 시 제외할 흔한 잡음 단어(종목 커뮤니티 게시글 제목에 너무 자주 나와
+# 특정 종목/이슈를 대표하지 못하는 것들). 완전한 불용어 사전은 아니고, 실제 표본에서
+# 자주 걸리던 단어 위주로 최소한만 추린 것.
+_KEYWORD_STOPWORDS = {
+    "오늘", "진짜", "정말", "제발", "여기", "우리", "저기", "이거", "그거",
+    "사람", "종목", "주식", "완전", "약간", "지금", "생각", "이번", "저번",
+    "매매", "장난", "역시", "그냥", "아까",
+}
+
+
+def top_keywords(posts: list, label: str, top_n: int = 3) -> list:
+    """label(긍정/부정)로 분류된 게시글 제목들에서 가장 자주 등장한 명사 top_n개를 반환한다.
+    감성 사전 단어 매칭이 아니라 형태소 분석 기반 명사 빈도이므로, "유가상승"/"중동"처럼
+    감성 단어집에는 없는 실제 화제 키워드도 잡아낼 수 있다."""
+    counts: dict = {}
+    for post in posts:
+        if post.get("sentiment_label") != label:
+            continue
+        for token in _kiwi.tokenize(post.get("title", "")):
+            if token.tag not in ("NNG", "NNP"):
+                continue
+            word = token.form
+            if len(word) < 2 or word in _KEYWORD_STOPWORDS:
+                continue
+            counts[word] = counts.get(word, 0) + 1
+    return [w for w, _ in sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:top_n]]
+
+
 def daily_sentiment_summary(posts: list) -> dict:
     """날짜별로 게시글 감성점수를 집계해 {date: {pos, neg, neutral, total, avg_score}} 형태로 반환한다."""
     summary = {}

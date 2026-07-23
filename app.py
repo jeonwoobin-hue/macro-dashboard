@@ -110,6 +110,16 @@ st.markdown(
     div[class*="st-key-scrollrow"] [data-testid="stMetric"] {
         min-height: 6.5rem;
     }
+    /* D-Day 배지를 제목(h3) 안에 붙이면 카드마다 제목 길이가 달라 어떤 카드만 2줄로
+       넘어가면서 위 폰트 크기 고정이 무력화되고 카드 정렬이 다시 깨졌다. 배지는 제목과
+       분리해 항상 고정 높이의 별도 줄에 두면(배지가 없는 카드도 빈 줄로 같은 높이를 차지)
+       제목 줄 수는 항상 동일하게 유지된다. */
+    div[class*="st-key-scrollrow"] .dday-badge-line {
+        min-height: 1.3rem;
+        font-size: 0.8rem;
+        color: #9AA4B2;
+        margin-bottom: 0.2rem;
+    }
 
     @media (min-width: 768px) {
         div[class*="st-key-scrollrow"] div[data-testid="stHorizontalBlock"] {
@@ -752,6 +762,14 @@ def release_dday_badge(kind: str) -> str:
         return ""
 
 
+def dday_badge_line(kind: str | None = None, fomc: bool = False) -> None:
+    """scrollrow 카드에서 제목(h3)과 분리된 고정 높이 줄에 D-day 배지를 그린다. 배지가 없는
+    카드도 빈 줄로 동일한 높이를 차지해서, 제목 글자 수 + 배지 유무에 따라 카드마다 제목이
+    다른 줄 수로 넘어가 카드 정렬이 깨지는 걸 막는다(제목 글자 크기 고정 트릭과는 별개 문제)."""
+    text = (fomc_dday_badge() if fomc else release_dday_badge(kind or "")).replace("`", "").strip()
+    st.markdown(f'<div class="dday-badge-line">{text}</div>', unsafe_allow_html=True)
+
+
 def fomc_dday_badge() -> str:
     """manual_fomc.csv에 사용자가 입력해둔 meeting_date 중 가장 가까운 미래 회의일 기준."""
     try:
@@ -1206,7 +1224,8 @@ if active_tab == "🐟 물가":
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-            st.subheader("Core CPI (MoM)" + release_dday_badge("core_cpi"))
+            st.subheader("Core CPI (MoM)")
+            dday_badge_line("core_cpi")
             st.caption("에너지·식품을 제외한 소비자물가지수의 전월 대비 변화율. 연준의 근원 인플레이션 판단 지표.")
             cpi_latest_date = None
             try:
@@ -1226,7 +1245,8 @@ if active_tab == "🐟 물가":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c2:
-            st.subheader("Core PCE (MoM)" + release_dday_badge("core_pce"))
+            st.subheader("Core PCE (MoM)")
+            dday_badge_line("core_pce")
             st.caption("에너지·식품을 제외한 개인소비지출 물가지수 전월비. 연준이 공식 목표(2%)로 삼는 지표.")
             try:
                 df = get_series("PCEPILFE", str(start_date), api_key)
@@ -1244,6 +1264,7 @@ if active_tab == "🐟 물가":
 
         with c3:
             st.subheader("WTI 유가")
+            dday_badge_line()
             st.caption("서부텍사스산 원유 현물가($/배럴). 에너지 인플레이션과 에너지주 실적에 직결되는 선행 변수.")
             try:
                 df = get_series("DCOILWTICO", str(start_date), api_key)
@@ -1269,6 +1290,7 @@ if active_tab == "🐟 물가":
 
         with c4:
             st.subheader("기대인플레이션 (BEI)")
+            dday_badge_line()
             st.caption("국채-물가연동국채(TIPS) 스프레드로 산출한 시장 기대인플레이션. 5년물·10년물 비교.")
             try:
                 df5 = get_series("T5YIE", str(start_date), api_key)[["date", "value"]].rename(columns={"value": "5년 기대인플레이션"})
@@ -1308,7 +1330,8 @@ if active_tab == "👷 고용":
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-            st.subheader("비농업 고용" + release_dday_badge("nfp_family"))
+            st.subheader("비농업 고용")
+            dday_badge_line("nfp_family")
             st.caption("비농업 부문 신규 고용자 수(전월 대비 증감, 천 명). 경기 모멘텀의 대표 선행 신호.")
             try:
                 df = get_series("PAYEMS", str(start_date), api_key)
@@ -1328,7 +1351,8 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c2:
-            st.subheader("실업률" + release_dday_badge("nfp_family"))
+            st.subheader("실업률")
+            dday_badge_line("nfp_family")
             st.caption("경제활동인구 중 실업자 비율. 연준 이중책무(물가·고용) 중 고용 측면 판단 근거.")
             try:
                 df = get_series("UNRATE", str(start_date), api_key)
@@ -1345,7 +1369,8 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c3:
-            st.subheader("평균시급 (YoY)" + release_dday_badge("nfp_family"))
+            st.subheader("평균시급 (YoY)")
+            dday_badge_line("nfp_family")
             st.caption("시간당 평균 임금 전년 대비 상승률. 임금발 인플레이션 압력을 가늠하는 지표.")
             try:
                 df = get_series("CES0500000003", str(start_date), api_key)
@@ -1362,7 +1387,8 @@ if active_tab == "👷 고용":
                 st.warning(f"데이터를 불러올 수 없습니다: {e}")
 
         with c4:
-            st.subheader("신규실업수당 청구건수" + release_dday_badge("jobless_claims"))
+            st.subheader("신규실업수당 청구건수")
+            dday_badge_line("jobless_claims")
             st.caption("매주 발표되는 초기 실업수당 청구 건수. 고용 냉각을 가장 빨리 포착하는 주간 선행 지표.")
             try:
                 df = get_series("ICSA", str(start_date), api_key)
@@ -1966,7 +1992,7 @@ if active_tab == "🔍 종목 검색·비교":
                 "비교할 종목 선택 (최대 6개)", option_labels, max_selections=6, key="stock_compare_select"
             )
             window_days = st.radio(
-                "비교 기간", [1, 3, 7, 30], horizontal=True, format_func=lambda d: f"최근 {d}일", key="stock_compare_days"
+                "비교 기간", [1, 3, 5, 10, 20], horizontal=True, format_func=lambda d: f"최근 {d}일", key="stock_compare_days"
             )
             from stockanalyzer.jobs import compare_job
 
@@ -1983,8 +2009,23 @@ if active_tab == "🔍 종목 검색·비교":
 
             compare_result = get_stock_compare_data()
             if compare_result and compare_result.get("results"):
+                from stockanalyzer.analysis.compare import build_daily_table, compute_hit_rate
+
                 st.caption(f"기준: 최근 {compare_result['days']}일 · {pd.to_datetime(compare_result['timestamp']).strftime('%Y-%m-%d %H:%M')}")
-                cdf = pd.DataFrame(compare_result["results"])
+
+                LAG_OPTIONS = ["당일 여론 vs 당일 등락", "전일 여론 vs 다음 거래일 등락"]
+                lag_label = st.radio(
+                    "여론·주가 비교 시차", LAG_OPTIONS, horizontal=True, key="stock_compare_lag",
+                    help="커뮤니티 반응이 다음 거래일 주가에 반영되는 경우가 많다는 가설을 반영해, "
+                         "'당일 여론 vs 다음 거래일 등락'으로 바꿔 비교해볼 수 있습니다. 재크롤링 없이 즉시 재계산됩니다.",
+                )
+                lag_days = 1 if lag_label == LAG_OPTIONS[1] else 0
+
+                # 종목별 일별 상세(daily_rows)는 lag 옵션에 따라 매번 다시 계산한다(재크롤링 불필요).
+                daily_by_code = {}
+                for r in compare_result["results"]:
+                    rows = build_daily_table(r.get("daily_sentiment", {}), r.get("daily_price_changes", []), lag_days=lag_days)
+                    daily_by_code[r["code"]] = {"rows": rows, "hit": compute_hit_rate(rows)}
 
                 def _sentiment_label(row):
                     majority = row["sentiment_majority"]
@@ -1995,18 +2036,88 @@ if active_tab == "🔍 종목 검색·비교":
                     ratio = row["pos_ratio"] if majority == "긍정" else row["neg_ratio"]
                     return f"{majority}({ratio:.1f}%)" if pd.notna(ratio) else majority
 
+                def _hit_rate_label(code):
+                    hit = daily_by_code[code]["hit"]
+                    return f"{hit['hit_rate']:.0f}% ({hit['judged_days']}일)" if hit["hit_rate"] is not None else "—"
+
+                def _keyword_tags(row):
+                    pos_kw, neg_kw = row.get("top_keywords_pos") or [], row.get("top_keywords_neg") or []
+                    parts = []
+                    if pos_kw:
+                        parts.append("🟢" + ",".join(pos_kw))
+                    if neg_kw:
+                        parts.append("🔴" + ",".join(neg_kw))
+                    return " ".join(parts) if parts else "—"
+
+                cdf = pd.DataFrame(compare_result["results"])
                 cdf_display = cdf.assign(
                     일치=cdf["match"].map({True: "✅ 일치", False: "❌ 불일치", None: "—"}),
                     여론=cdf.apply(_sentiment_label, axis=1),
+                    개미지수=cdf["code"].map(_hit_rate_label),
+                    핫키워드=cdf.apply(_keyword_tags, axis=1),
                 )[[
                     "name", "per", "pbr", "price_now", "price_change_pct",
-                    "pos_count", "neg_count", "여론", "price_direction", "일치",
+                    "pos_count", "neg_count", "여론", "price_direction", "일치", "개미지수", "핫키워드",
                 ]].rename(columns={
                     "name": "종목명", "per": "PER", "pbr": "PBR", "price_now": "현재가",
                     "price_change_pct": "기간등락률(%)", "pos_count": "긍정글", "neg_count": "부정글",
                     "price_direction": "실제방향",
                 })
                 st.dataframe(cdf_display, width="stretch", hide_index=True)
+                st.caption(
+                    "개미지수 = 선택한 기간 중 신뢰도 미달(하루 게시글 20건 미만)인 날을 뺀 나머지 날의 "
+                    "여론-주가 방향 일치율. 핫키워드는 감성 사전 매칭이 아니라 제목 명사 빈도 기반 상위 3개."
+                )
+
+                st.markdown("**종목별 일별 트렌드**")
+                for r in compare_result["results"]:
+                    daily_rows = daily_by_code[r["code"]]["rows"]
+                    hit = daily_by_code[r["code"]]["hit"]
+                    hit_text = f"개미지수 {hit['hit_rate']:.0f}%" if hit["hit_rate"] is not None else "개미지수 —"
+                    with st.expander(f"📊 {r['name']} · {hit_text}", expanded=False):
+                        if not daily_rows:
+                            st.caption("일별 데이터가 없습니다.")
+                            continue
+
+                        daily_df = pd.DataFrame(daily_rows)
+                        daily_df["net_sentiment"] = daily_df["pos_count"] - daily_df["neg_count"]
+                        daily_df["match_icon"] = daily_df["match"].map({True: "✅", False: "❌"}).fillna("")
+                        max_abs = daily_df["net_sentiment"].abs().max() or 1
+                        daily_df["marker_y"] = max_abs * 1.25
+
+                        bar = alt.Chart(daily_df).mark_bar().encode(
+                            x=alt.X("date:O", title="날짜"),
+                            y=alt.Y("net_sentiment:Q", title="여론 지수(긍정글-부정글)"),
+                            color=alt.condition(alt.datum.net_sentiment >= 0, alt.value("#2e7d32"), alt.value("#c62828")),
+                            tooltip=[
+                                alt.Tooltip("date:N", title="날짜"), alt.Tooltip("pos_count:Q", title="긍정글"),
+                                alt.Tooltip("neg_count:Q", title="부정글"), alt.Tooltip("total_posts:Q", title="전체"),
+                            ],
+                        )
+                        line = alt.Chart(daily_df).mark_line(point=True, color="#4C78A8").encode(
+                            x=alt.X("date:O"),
+                            y=alt.Y("price_change_pct:Q", title="일별 등락률(%)"),
+                            tooltip=[alt.Tooltip("date:N", title="날짜"), alt.Tooltip("price_change_pct:Q", title="등락률(%)", format="+.2f")],
+                        )
+                        markers = alt.Chart(daily_df).mark_text(fontSize=14).encode(
+                            x=alt.X("date:O"), y=alt.Y("marker_y:Q"), text="match_icon:N",
+                        )
+                        st.altair_chart(
+                            alt.layer(bar, markers, line).resolve_scale(y="independent").properties(height=280),
+                            width="stretch",
+                        )
+
+                        detail_display = daily_df.assign(
+                            감성지수=daily_df["pos_ratio"].map(lambda x: f"{x:.1f}%" if pd.notna(x) else "—"),
+                            주가등락=daily_df["price_change_pct"].map(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
+                            예측일치=daily_df["match"].map({True: "✅ 일치", False: "❌ 불일치", None: "—"}),
+                            버즈상태=daily_df.apply(
+                                lambda r2: "⚠️ 신뢰도 미달" if r2["low_buzz"] else ("🔥 버즈 급증" if r2["buzz_spike"] else ""), axis=1
+                            ),
+                        )[["date", "pos_count", "neg_count", "감성지수", "주가등락", "예측일치", "버즈상태"]].rename(columns={
+                            "date": "날짜", "pos_count": "긍정글", "neg_count": "부정글",
+                        })
+                        st.dataframe(detail_display, width="stretch", hide_index=True)
 
                 with st.expander("원문 게시글 보기 (긍정/부정 라벨)", expanded=False):
                     for r in compare_result["results"]:
@@ -2023,12 +2134,12 @@ if active_tab == "🔍 종목 검색·비교":
                             st.caption("게시글이 없습니다.")
 
 if active_tab == "🏭 업종분석":
-    st.subheader("업종분석")
+    st.subheader("종목분석")
     st.caption(
         "선택한 업종의 종목을 ROE·EPS성장률·PER·PBR·부채비율(가치점수) + 외국인·기관 순매수 강도·"
         "거래대금 팽창비율(수급점수)로 그룹화합니다. 실시간 크롤링이라 다소 걸릴 수 있습니다."
     )
-    with st.expander("펼치기", expanded=False):
+    with st.expander("펼치기", expanded=True):
         from stockanalyzer.crawler.sector import BROAD_SECTOR_GROUPS
 
         sector_name = st.selectbox("업종 선택", list(BROAD_SECTOR_GROUPS.keys()), key="sector_select")
