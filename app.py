@@ -950,7 +950,7 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
 ECON_SUB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기", "💵 금리", "🏦 연준", "🫧 버블", "📰 뉴스"]
 HUMAN_SUB_LABELS = ["🔍 여론·주가 분석", "🔑 국내주식 키워드", "😨 공포지수", "🗣️ 종목 심리분석"]
 HUMAN_SEEN_KEYS = {"🔑 국내주식 키워드": "human_keyword", "🗣️ 종목 심리분석": "human_stock"}
-COMMUNITY_SUB_LABELS = ["🪙 동전점지", "💬 커뮤니티"]
+COMMUNITY_SUB_LABELS = ["💬 커뮤니티", "🪙 동전점지"]
 
 
 def _sub_nav(label: str, session_key: str, options: list[str], seen_keys: dict[str, str] | None = None) -> str:
