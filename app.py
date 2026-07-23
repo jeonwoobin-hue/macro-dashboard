@@ -1330,7 +1330,7 @@ if active_tab == "💬 커뮤니티":
                 "id": f"{int(datetime.now().timestamp() * 1000)}",
                 "nickname": community_nickname.strip() or "익명",
                 "content": community_content.strip(),
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "timestamp": datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M"),
             })
             _save_community_posts(community_posts)
             st.success("게시되었습니다.")
