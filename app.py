@@ -350,6 +350,35 @@ def _save_seen(seen: dict) -> None:
 
 _SEEN = _load_seen()
 
+# ── 커뮤니티 게시판 ──────────────────────────────────────────
+# 로그인/DB 없이 파일 하나에 누적하는 방식이라, notes_index.json 등과 마찬가지로 로컬(또는
+# 배포 인스턴스가 살아있는 동안)에는 잘 쌓이지만, 이 파일을 git으로 커밋해두지 않으면
+# 재배포 시 초기화된다는 한계가 있다 — 실시간 자유게시판 용도로는 이 정도로 충분하다고 보고
+# 별도 DB 연동 없이 구현한다.
+_COMMUNITY_FILE = os.path.join(_DATA_DIR, "community_posts.json")
+COMMUNITY_MAX_POSTS = 500
+COMMUNITY_NICKNAME_MAX_LEN = 20
+COMMUNITY_CONTENT_MAX_LEN = 1000
+
+
+def _load_community_posts() -> list:
+    if os.path.exists(_COMMUNITY_FILE):
+        try:
+            with open(_COMMUNITY_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:  # noqa: BLE001
+            return []
+    return []
+
+
+def _save_community_posts(posts: list) -> None:
+    try:
+        os.makedirs(_DATA_DIR, exist_ok=True)
+        with open(_COMMUNITY_FILE, "w", encoding="utf-8") as f:
+            json.dump(posts[-COMMUNITY_MAX_POSTS:], f, ensure_ascii=False, indent=2)
+    except Exception:  # noqa: BLE001
+        pass
+
 
 def _mark_seen(key: str) -> None:
     _SEEN[key] = datetime.now().timestamp()
@@ -403,7 +432,7 @@ def _badge_css(container_key: str, fresh_positions: list[int]) -> str:
 HUMAN_FRESH = _unseen_fresh("human_keyword") or _unseen_fresh("human_stock")
 NOTES_FRESH = _unseen_fresh("multi_notes")
 
-MAIN_SECTIONS = ["종목분석", "경제지표", "인간지표", "멀티차트", "동전점지"]
+MAIN_SECTIONS = ["종목분석", "경제지표", "인간지표", "멀티차트", "커뮤니티"]
 MAIN_FRESH_FLAGS = [False, False, HUMAN_FRESH, NOTES_FRESH, False]
 
 if "main_section" not in st.session_state:
@@ -921,6 +950,7 @@ def analysis_button(indicator_key: str, title: str, context: str, cache_key: str
 ECON_SUB_LABELS = ["📈 시장", "🐟 물가", "👷 고용", "🏭 경기", "💵 금리", "🏦 연준", "🫧 버블", "📰 뉴스"]
 HUMAN_SUB_LABELS = ["🔍 여론·주가 분석", "🔑 국내주식 키워드", "😨 공포지수", "🗣️ 종목 심리분석"]
 HUMAN_SEEN_KEYS = {"🔑 국내주식 키워드": "human_keyword", "🗣️ 종목 심리분석": "human_stock"}
+COMMUNITY_SUB_LABELS = ["🪙 동전점지", "💬 커뮤니티"]
 
 
 def _sub_nav(label: str, session_key: str, options: list[str], seen_keys: dict[str, str] | None = None) -> str:
@@ -960,8 +990,8 @@ if main_section == "홈":
 elif main_section == "멀티차트":
     _mark_seen("multi_notes")
     active_tab = "📓 노트 아카이브"
-elif main_section == "동전점지":
-    active_tab = "동전점지"
+elif main_section == "커뮤니티":
+    active_tab = _sub_nav("커뮤니티 메뉴", "community_sub", COMMUNITY_SUB_LABELS)
 elif main_section == "인간지표":
     active_tab = _sub_nav("인간지표 메뉴", "human_sub", HUMAN_SUB_LABELS, HUMAN_SEEN_KEYS)
 elif main_section == "종목분석":
@@ -1275,13 +1305,47 @@ coinEl.addEventListener("click", flip);
 </script>
 """
 
-if active_tab == "동전점지":
+if active_tab == "🪙 동전점지":
     st.subheader("동전점지")
     st.caption(
         "50:50으로 고민될 때, 캐릭터에게 대신 골라달라고 해보세요. "
         "재미로 보는 기능이며 투자 조언이 아닙니다."
     )
     components.html(COIN_FLIP_HTML, height=620, scrolling=False)
+
+# ── 커뮤니티 게시판 ────────────────────────────────────────────
+if active_tab == "💬 커뮤니티":
+    st.subheader("커뮤니티")
+    st.caption("자유롭게 의견을 나누는 게시판입니다. 닉네임은 선택이며, 비워두면 '익명'으로 표시됩니다.")
+
+    with st.form("community_post_form", clear_on_submit=True):
+        community_nickname = st.text_input("닉네임 (선택)", max_chars=COMMUNITY_NICKNAME_MAX_LEN)
+        community_content = st.text_area("내용", max_chars=COMMUNITY_CONTENT_MAX_LEN, height=100)
+        community_submitted = st.form_submit_button("게시하기", type="primary")
+
+    if community_submitted:
+        if community_content and community_content.strip():
+            community_posts = _load_community_posts()
+            community_posts.append({
+                "id": f"{int(datetime.now().timestamp() * 1000)}",
+                "nickname": community_nickname.strip() or "익명",
+                "content": community_content.strip(),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            })
+            _save_community_posts(community_posts)
+            st.success("게시되었습니다.")
+        else:
+            st.warning("내용을 입력해주세요.")
+
+    st.divider()
+    community_posts = _load_community_posts()
+    if not community_posts:
+        st.caption("아직 게시글이 없습니다. 첫 글을 남겨보세요!")
+    else:
+        for post in reversed(community_posts):
+            with st.container(key=f"community_post_{post['id']}", border=True):
+                st.markdown(f"**{post['nickname']}** · {post['timestamp']}")
+                st.write(post["content"])
 
 # ── 시장 ────────────────────────────────────────────────────
 if active_tab == "📈 시장":
@@ -2093,12 +2157,13 @@ if active_tab == "🔍 여론·주가 분석":
                 "비교할 종목 선택 (최대 6개)", option_labels, max_selections=6, key="stock_compare_select"
             )
             window_days = st.radio(
-                "비교 기간", [1, 3, 5, 10, 20], horizontal=True, format_func=lambda d: f"최근 {d}일", key="stock_compare_days"
+                "비교 기간", [1, 3, 5, 10, 20], index=2, horizontal=True,
+                format_func=lambda d: f"최근 {d}일", key="stock_compare_days"
             )
             from stockanalyzer.jobs import compare_job
 
             if st.button(
-                "비교분석 시작", key="stock_compare_run",
+                "비교분석 시작", key="stock_compare_run", type="primary",
                 disabled=not selected_labels or compare_job.status()["status"] == "running",
             ):
                 from stockanalyzer.live import run_compare_and_save
@@ -2279,7 +2344,7 @@ if active_tab == "🏭 업종분석":
                 help="시가총액 정렬은 '여론·주가 분석' 탭에서 전체 상장종목 목록을 먼저 만들어둬야 합니다.",
             )
         with filter_c2:
-            top_n = st.selectbox("상위 N종목", [5, 10, 20, 30], index=3, key="sector_top_n")
+            top_n = st.selectbox("상위 N종목", [5, 10, 20, 30], index=1, key="sector_top_n")
 
         st.markdown("**종목추가** (자동 선정 상위 N 밖의 종목도 함께 비교하고 싶을 때)")
         universe_for_extra = _load_stock_json("stock_universe.json")
@@ -2314,7 +2379,7 @@ if active_tab == "🏭 업종분석":
 
         from stockanalyzer.jobs import sector_job
 
-        if st.button("업종분석 시작", key="sector_run", disabled=sector_job.status()["status"] == "running"):
+        if st.button("업종분석 시작", key="sector_run", type="primary", disabled=sector_job.status()["status"] == "running"):
             from stockanalyzer.live import run_sector_and_save
 
             if not sector_job.start(run_sector_and_save, sector_name, sort_basis, top_n, extra_picks, sector_job.log):
