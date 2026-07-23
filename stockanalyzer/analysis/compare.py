@@ -189,6 +189,11 @@ def analyze_stock_window(code: str, name: str, days: int = 1) -> dict:
         "price_change_pct": price_change_pct,
         "window_days": days,
         "covered_full_window": covered_full_window,
+        # 실제로 확보된 거래일 수가 요청한 기간보다 적으면(네이버 시세 크롤링이 그 순간 일부만
+        # 응답했거나 일시적으로 막혔을 가능성 등) 조용히 좁은 기간으로 분석되는 대신 화면에
+        # 경고를 띄울 수 있도록 표시해둔다.
+        "trading_days_found": len(trading_dates),
+        "price_data_sufficient": len(trading_dates) >= days,
         "sentiment_majority": judgement["sentiment_majority"],
         "price_direction": judgement["price_direction"],
         "match": judgement["match"],

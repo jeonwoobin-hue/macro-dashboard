@@ -2014,6 +2014,14 @@ if active_tab == "🔍 종목 검색·비교":
 
                 st.caption(f"기준: 최근 {compare_result['days']}일 · {pd.to_datetime(compare_result['timestamp']).strftime('%Y-%m-%d %H:%M')}")
 
+                insufficient = [r["name"] for r in compare_result["results"] if r.get("price_data_sufficient") is False]
+                if insufficient:
+                    st.warning(
+                        f"{', '.join(insufficient)}: 네이버 시세 크롤링이 이번 실행에서 요청한 거래일 수만큼 "
+                        "확보되지 않아 분석 기간이 좁아졌을 수 있습니다(일시적인 크롤링 이슈일 가능성이 높습니다). "
+                        "'비교분석 시작'을 다시 눌러 재시도해보세요."
+                    )
+
                 LAG_OPTIONS = ["당일 여론 vs 당일 등락", "전일 여론 vs 다음 거래일 등락"]
                 lag_label = st.radio(
                     "여론·주가 비교 시차", LAG_OPTIONS, horizontal=True, key="stock_compare_lag",
@@ -2089,23 +2097,27 @@ if active_tab == "🔍 종목 검색·비교":
                         daily_df["match_icon"] = daily_df["match"].map({True: "✅", False: "❌"}).fillna("")
                         max_abs = daily_df["net_sentiment"].abs().max() or 1
                         daily_df["marker_y"] = max_abs * 1.25
+                        # temporal(T) x축은 데이터 포인트가 며칠 안 될 때 하루 안에 여러 개의 보조
+                        # 눈금(시간 단위)을 자동으로 채워 넣어 같은 날짜 라벨("7.23")이 여러 번
+                        # 찍히는 문제가 있었다. 실제 존재하는 날짜 하나당 라벨 하나만 나오도록
+                        # "M.D" 문자열을 만들어 순서가 보장된 ordinal(O) 축으로 바꾼다.
+                        daily_df["date_label"] = daily_df["date"].map(lambda d: f"{int(d[5:7])}.{int(d[8:10])}")
+                        date_order = list(daily_df["date_label"])
 
-                        # x축은 날짜 문자열(YYYY-MM-DD)을 temporal(T)로 넘겨 "7.16" 같은 짧은 포맷 +
-                        # 가로 라벨(labelAngle=0)을 쓴다. y축 제목은 길면 서로 겹쳐 보여서 짧게 줄였다.
-                        x_enc = alt.X("date:T", title="날짜", axis=alt.Axis(format="%-m.%-d", labelAngle=0))
+                        x_enc = alt.X("date_label:O", title="날짜", sort=date_order, axis=alt.Axis(labelAngle=0))
                         bar = alt.Chart(daily_df).mark_bar().encode(
                             x=x_enc,
                             y=alt.Y("net_sentiment:Q", title="여론지수", axis=alt.Axis(titlePadding=8)),
                             color=alt.condition(alt.datum.net_sentiment >= 0, alt.value("#2e7d32"), alt.value("#c62828")),
                             tooltip=[
-                                alt.Tooltip("date:T", title="날짜", format="%Y-%m-%d"), alt.Tooltip("pos_count:Q", title="긍정글"),
+                                alt.Tooltip("date:N", title="날짜"), alt.Tooltip("pos_count:Q", title="긍정글"),
                                 alt.Tooltip("neg_count:Q", title="부정글"), alt.Tooltip("total_posts:Q", title="전체"),
                             ],
                         )
                         line = alt.Chart(daily_df).mark_line(point=True, color="#4C78A8").encode(
                             x=x_enc,
                             y=alt.Y("price_change_pct:Q", title="등락률(%)", axis=alt.Axis(titlePadding=8)),
-                            tooltip=[alt.Tooltip("date:T", title="날짜", format="%Y-%m-%d"), alt.Tooltip("price_change_pct:Q", title="등락률(%)", format="+.2f")],
+                            tooltip=[alt.Tooltip("date:N", title="날짜"), alt.Tooltip("price_change_pct:Q", title="등락률(%)", format="+.2f")],
                         )
                         markers = alt.Chart(daily_df).mark_text(fontSize=14).encode(
                             x=x_enc, y=alt.Y("marker_y:Q"), text="match_icon:N",
