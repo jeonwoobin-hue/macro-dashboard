@@ -1,13 +1,13 @@
 {
-  "run_tag": "20260723_020351",
-  "timestamp": "2026-07-23T02:05:37",
+  "run_tag": "20260724_015905",
+  "timestamp": "2026-07-24T02:00:50",
   "recommendations": [
     {
       "code": "005380",
-      "per": 13.13,
-      "pbr": 0.93,
+      "per": 12.33,
+      "pbr": 0.88,
       "name": "현대차",
-      "supply_value_sum": 190833664000.0,
+      "supply_value_sum": 292264847000.0,
       "value_score": 75.0,
       "supply_score": 100.0,
       "total_score": 87.5,
@@ -16,10 +16,10 @@
     },
     {
       "code": "105560",
-      "per": 11.27,
-      "pbr": 1.07,
+      "per": 10.61,
+      "pbr": 1.0,
       "name": "KB금융",
-      "supply_value_sum": 180604615600.0,
+      "supply_value_sum": 218887495200.0,
       "value_score": 75.0,
       "supply_score": 80.0,
       "total_score": 77.5,
@@ -27,47 +27,47 @@
       "market_cap_rank": 10
     },
     {
-      "code": "032830",
-      "per": 22.92,
-      "pbr": 0.73,
-      "name": "삼성생명",
-      "supply_value_sum": 79157589000.0,
+      "code": "005935",
+      "per": 14.74,
+      "pbr": 2.54,
+      "name": "삼성전자우",
+      "supply_value_sum": 116857525300.0,
       "value_score": 60.0,
       "supply_score": 60.0,
       "total_score": 60.0,
       "group": "저평가·수급강세 (추천)",
-      "market_cap_rank": 8
+      "market_cap_rank": 4
     },
     {
-      "code": "005935",
-      "per": 15.39,
-      "pbr": 2.65,
-      "name": "삼성전자우",
-      "supply_value_sum": 17060640700.0,
+      "code": "032830",
+      "per": 22.19,
+      "pbr": 0.7,
+      "name": "삼성생명",
+      "supply_value_sum": 73363258000.0,
       "value_score": 60.0,
       "supply_score": 50.0,
       "total_score": 55.0,
       "group": "저평가·수급약세 (관망)",
-      "market_cap_rank": 4
-    },
-    {
-      "code": "207940",
-      "per": 45.58,
-      "pbr": 8.19,
-      "name": "삼성바이오로직스",
-      "supply_value_sum": 183044684000.0,
-      "value_score": 15.0,
-      "supply_score": 90.0,
-      "total_score": 52.5,
-      "group": "고평가·수급강세 (주의)",
       "market_cap_rank": 9
     },
     {
+      "code": "009150",
+      "per": 128.55,
+      "pbr": 10.48,
+      "name": "삼성전기",
+      "supply_value_sum": 262932925000.0,
+      "value_score": 5.0,
+      "supply_score": 90.0,
+      "total_score": 47.5,
+      "group": "고평가·수급강세 (주의)",
+      "market_cap_rank": 5
+    },
+    {
       "code": "402340",
-      "per": 10.4,
-      "pbr": 4.48,
+      "per": 9.61,
+      "pbr": 4.14,
       "name": "SK스퀘어",
-      "supply_value_sum": -719231368000.0,
+      "supply_value_sum": -320688786000.0,
       "value_score": 60.0,
       "supply_score": 30.0,
       "total_score": 45.0,
@@ -75,23 +75,23 @@
       "market_cap_rank": 3
     },
     {
-      "code": "009150",
-      "per": 133.18,
-      "pbr": 10.85,
-      "name": "삼성전기",
-      "supply_value_sum": 143938793000.0,
-      "value_score": 5.0,
+      "code": "207940",
+      "per": 48.86,
+      "pbr": 8.78,
+      "name": "삼성바이오로직스",
+      "supply_value_sum": 145212675000.0,
+      "value_score": 15.0,
       "supply_score": 70.0,
-      "total_score": 37.5,
+      "total_score": 42.5,
       "group": "고평가·수급강세 (주의)",
-      "market_cap_rank": 5
+      "market_cap_rank": 8
     },
     {
       "code": "373220",
       "per": null,
       "pbr": 3.51,
       "name": "LG에너지솔루션",
-      "supply_value_sum": -55526465500.0,
+      "supply_value_sum": -20941537000.0,
       "value_score": 25.0,
       "supply_score": 40.0,
       "total_score": 32.5,
@@ -100,10 +100,10 @@
     },
     {
       "code": "005930",
-      "per": 21.68,
-      "pbr": 3.73,
+      "per": 20.81,
+      "pbr": 3.58,
       "name": "삼성전자",
-      "supply_value_sum": -9723354941000.0,
+      "supply_value_sum": -10212991797500.0,
       "value_score": 40.0,
       "supply_score": 20.0,
       "total_score": 30.0,
@@ -112,10 +112,10 @@
     },
     {
       "code": "000660",
-      "per": 18.16,
-      "pbr": 8.11,
+      "per": 17.65,
+      "pbr": 7.88,
       "name": "SK하이닉스",
-      "supply_value_sum": -18407243098000.0,
+      "supply_value_sum": -14623713779000.0,
       "value_score": 35.0,
       "supply_score": 10.0,
       "total_score": 22.5,
@@ -126,69 +126,69 @@
   "correlations": [
     {
       "code": "000660",
-      "n_days": 4,
-      "sentiment_return_corr": -0.0102557662,
+      "n_days": 5,
+      "sentiment_return_corr": 0.4020670915,
       "name": "SK하이닉스"
     },
     {
       "code": "005380",
-      "n_days": 5,
-      "sentiment_return_corr": 0.2644836715,
+      "n_days": 6,
+      "sentiment_return_corr": 0.3857857561,
       "name": "현대차"
     },
     {
       "code": "005930",
-      "n_days": 4,
-      "sentiment_return_corr": 0.809126868,
+      "n_days": 5,
+      "sentiment_return_corr": 0.7905780514,
       "name": "삼성전자"
     },
     {
       "code": "005935",
-      "n_days": 11,
-      "sentiment_return_corr": 0.1623208552,
+      "n_days": 12,
+      "sentiment_return_corr": 0.1515437317,
       "name": "삼성전자우"
     },
     {
       "code": "009150",
-      "n_days": 5,
-      "sentiment_return_corr": 0.6973656912,
+      "n_days": 6,
+      "sentiment_return_corr": 0.6602292814,
       "name": "삼성전기"
     },
     {
       "code": "032830",
-      "n_days": 34,
-      "sentiment_return_corr": 0.2433530003,
+      "n_days": 35,
+      "sentiment_return_corr": 0.2204157602,
       "name": "삼성생명"
     },
     {
       "code": "105560",
-      "n_days": 23,
-      "sentiment_return_corr": -0.381761266,
+      "n_days": 24,
+      "sentiment_return_corr": -0.4474188591,
       "name": "KB금융"
     },
     {
       "code": "207940",
-      "n_days": 19,
-      "sentiment_return_corr": -0.2252237105,
+      "n_days": 20,
+      "sentiment_return_corr": -0.1725142372,
       "name": "삼성바이오로직스"
     },
     {
       "code": "373220",
-      "n_days": 9,
-      "sentiment_return_corr": 0.3865211325,
+      "n_days": 10,
+      "sentiment_return_corr": 0.4725745716,
       "name": "LG에너지솔루션"
     },
     {
       "code": "402340",
-      "n_days": 6,
-      "sentiment_return_corr": 0.0581767605,
+      "n_days": 7,
+      "sentiment_return_corr": 0.2299268081,
       "name": "SK스퀘어"
     }
   ],
   "chart_files": [
-    "per_pbr_scatter_20260723_020351.png",
-    "total_score_bar_20260723_020351.png",
-    "sentiment_correlation_20260723_020351.png"
+    "per_pbr_scatter_20260724_015905.png",
+    "total_score_bar_20260724_015905.png",
+    "sentiment_correlation_20260724_015905.png"
   ],
-  "report_path": "/home/runner/work/macro-dashboard/macro-dashboard/reports/report_20260723_020351.md"
+  "report_path": "/home/runner/work/macro-dashboard/macro-dashboard/reports/report_20260724_015905.md"
 }
